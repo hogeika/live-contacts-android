@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+  package="org.hogeika.android.app.Contacts" android:versionCode="1" android:versionName="0.0.1-SNAPSHOT">
+<uses-permission android:name="android.permission.READ_SMS"></uses-permission>
+<uses-permission android:name="android.permission.READ_CONTACTS"></uses-permission>
+<uses-permission android:name="android.permission.INTERNET"></uses-permission>
+<uses-permission android:name="android.permission.GET_ACCOUNTS"></uses-permission>
+<uses-permission android:name="android.permission.MANAGE_ACCOUNTS"></uses-permission>
+<uses-permission android:name="android.permission.USE_CREDENTIALS"></uses-permission>
+<uses-permission android:name="android.permission.READ_PHONE_STATE"></uses-permission>
+<uses-permission android:name="android.permission.RECEIVE_SMS"></uses-permission>
+<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"></uses-permission>
+<uses-sdk android:targetSdkVersion="8" android:minSdkVersion="8"></uses-sdk>
+
+  <application android:icon="@drawable/icon" android:label="@string/app_name" android:name="ContactsApplication" android:debuggable="false">
+    <activity android:name=".MainActivity" android:theme="@android:style/Theme.NoTitleBar">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
+    </activity>
+    <activity android:name="RecentSessionActivity"></activity>
+    <activity android:name=".ActivityStreamActivity"></activity>
+    <activity android:name=".plugin.twitter.TwitterLoginActivity" android:theme="@android:style/Theme.Dialog"></activity>
+    <activity android:name="AccountSettingActivity"></activity>
+    <activity android:name="ContactSessionActivity"></activity>
+    <receiver android:name=".plugin.local.PhoneStateReceiver">
+        <intent-filter>
+            <action android:name="android.intent.action.PHONE_STATE"></action>
+        </intent-filter>
+    </receiver>
+    <receiver android:name=".plugin.local.SMSReceiver">
+        <intent-filter>
+            <action android:name="android.provider.Telephony.SMS_RECEIVED"></action>
+        </intent-filter>
+    </receiver>
+    <receiver android:name=".BootCompletedReceiver">
+        <intent-filter>
+            <action android:name="android.intent.action.BOOT_COMPLETED"></action>
+        </intent-filter>
+    </receiver>
+    <receiver android:name=".AlarmReceiver">
+    </receiver>
+    <activity android:name="SettingActivity"></activity>
+     
+  </application>
+
+</manifest>
+

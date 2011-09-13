@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">LiveContacts</string>
+    <string name="help_url">http://code.google.com/p/live-contacts-android/wiki/Main</string>
+    <string-array name="sync_period_entries">
+        <item>None</item>
+        <item>15min</item>
+        <item>30min</item>
+        <item>1hour</item>
+        <item>5min(test)</item>
+    </string-array>
+	<string-array name="sync_period_values">
+		<item>0</item>
+		<item>900000</item>
+		<item>1800000</item>
+		<item>3600000</item>
+		<item>300000</item>
+	</string-array>
+</resources>
