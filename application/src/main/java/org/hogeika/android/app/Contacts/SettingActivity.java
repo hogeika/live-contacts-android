@@ -2,6 +2,7 @@ package org.hogeika.android.app.Contacts;
 
 import org.hogeika.android.app.Contacts.R;
 import org.hogeika.android.app.Contacts.TimeLineManager.ClearListener;
+import org.hogeika.android.app.Contacts.TimeLineManager.PurgeListenr;
 import org.hogeika.android.app.Contacts.TimeLineManager.ReloadListener;
 
 import android.app.AlertDialog;
@@ -103,6 +104,25 @@ public class SettingActivity extends PreferenceActivity implements OnPreferenceC
 					}
 				});
 				builder.create().show();
+				return true;
+			}
+		});
+
+		p = findPreference("purge");
+		p.setOnPreferenceClickListener(new OnPreferenceClickListener() {
+			@Override
+			public boolean onPreferenceClick(Preference preference) {
+				final ProgressDialog progressDialog = new ProgressDialog(SettingActivity.this);
+				progressDialog.setCancelable(false);
+				progressDialog.setMessage("Purging..");
+				progressDialog.show();
+				mTimeLineManager.purge(new PurgeListenr() {
+					@Override
+					public void onComplete() {
+						progressDialog.dismiss();
+						finish();
+					}
+				});
 				return true;
 			}
 		});

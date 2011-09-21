@@ -39,17 +39,20 @@ import android.util.Log;
 public class TimeLineManager {
 	private static final String TAG = "TimeLineManager";
 
-	private interface TimeLineColumns extends BaseColumns{
+	private interface TimeStampColumns {
+		static final String TIMESTAMP = "time_stamp";
+	}
+	
+	private interface TimeLineColumns extends BaseColumns {
 		static final String TABLE_NAME = "timeline";
 		
 		static final String LOOKUP_KEY = "lookup";
 		static final String RAW_CONTACT_ID = "raw_contact_id";
 		static final String MESSAGE_ID = "message_id";
 	}
-	private interface MessageColumns extends BaseColumns {
+	private interface MessageColumns extends BaseColumns , TimeStampColumns  {
 		static final String TABLE_NAME = "message";
 		
-		static final String TIMESTAMP = "time_stamp";
 		static final String SOURCE = "source";
 		static final String SOURCE_ACCOUNT = "source_account";
 		static final String SOURCE_TYPE = "source_type";
@@ -58,12 +61,11 @@ public class TimeLineManager {
 		static final String TITLE = "title";
 		static final String SUMMARY = "summary";
 	}
-	private interface ActivityStreamColumns extends BaseColumns {
+	private interface ActivityStreamColumns extends BaseColumns , TimeStampColumns  {
 		static final String TABLE_NAME = "activity_stream";
 		
 		static final String LOOKUP_KEY = "lookup";
 		static final String RAW_CONTACT_ID = "raw_contact_id";
-		static final String TIMESTAMP = "time_stamp";
 		static final String SOURCE = "source";
 		static final String SOURCE_ACCOUNT = "source_account";
 		static final String SOURCE_TYPE = "source_type";
@@ -91,7 +93,9 @@ public class TimeLineManager {
 			
 		}
 	}
-	
+
+	private static final int RETENTION_PERIOD = 90;
+
 	private void createTables(SQLiteDatabase db){
 		db.execSQL("CREATE TABLE " + TimeLineColumns.TABLE_NAME + " (" +
 				TimeLineColumns._ID + "  integer primary key autoincrement," +
@@ -192,6 +196,7 @@ public class TimeLineManager {
 		};
 		mNotificationManager = (NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
 		mHandler = new Handler(mContext.getMainLooper());
+		purgeDB(); // purge old data
 		loadDB();
 	}
 
@@ -233,8 +238,8 @@ public class TimeLineManager {
 				}
 				timeline.close();
 			}while(messages.moveToNext());
-			messages.close();
 		}
+		messages.close();
 
 		Cursor activity = db.query(ActivityStreamColumns.TABLE_NAME, null, null, null, null, null, null);
 		if(activity.moveToFirst()){
@@ -260,11 +265,34 @@ public class TimeLineManager {
 				ActivityStreamItemImpl item = new ActivityStreamItemImpl(source, timeStamp, user, sourceAccount, sourceType, originalId, summary, url);
 				internalAddActivityStreamItem(item);
 			}while(activity.moveToNext());
-			activity.close();
 		}
+		activity.close();
 		db.close();
 	}
 	
+	private void purgeDB(){
+		long currentTime = System.currentTimeMillis();
+		long diff = RETENTION_PERIOD * 24 * 60 * 60 * 1000L;
+		String whereClause = TimeStampColumns.TIMESTAMP + " < ?";
+		String[] whereArgs = new String[]{Long.toString(currentTime - diff)};
+		
+		SQLiteDatabase db = mDBHelper.getReadableDatabase();
+		Cursor messages = db.query(MessageColumns.TABLE_NAME, new String[]{MessageColumns._ID}, whereClause, whereArgs, null, null, null);
+		if(messages.moveToFirst()){
+			int idColumn = messages.getColumnIndex(MessageColumns._ID);
+			do{
+				long msg_id = messages.getLong(idColumn);
+				db.delete(TimeLineColumns.TABLE_NAME, TimeLineColumns.MESSAGE_ID + "=?", new String[]{Long.toString(msg_id)});
+			}while(messages.moveToNext());
+		}
+		messages.close();
+		int count = 0;
+		count += db.delete(MessageColumns.TABLE_NAME, MessageColumns.TIMESTAMP + " < ?", whereArgs);
+		count += db.delete(ActivityStreamColumns.TABLE_NAME, whereClause, whereArgs);
+		Log.d(TAG, "Delete " + count + " rows.");
+		db.close();
+	}
+
 	private void clearDB(){
 		SQLiteDatabase db = mDBHelper.getReadableDatabase();
 		dropTables(db);
@@ -884,6 +912,24 @@ public class TimeLineManager {
 		}).start();
 	}
 	
+	public static interface PurgeListenr {
+		public void onComplete();
+	}
+	
+	public synchronized void purge(final PurgeListenr listener){
+		new Thread(new Runnable() {
+			public void run() {
+				internalClear();
+				purgeDB();
+				loadDB();
+				if(listener != null){
+					listener.onComplete();
+				}
+				notifyOnUpdate();
+			}
+		}).start();
+	}
+	
 	public static interface ClearListener {
 		public void onComplete();
 	}
@@ -953,5 +999,6 @@ public class TimeLineManager {
 		AlarmManager alarmManager = (AlarmManager) mContext.getSystemService(Context.ALARM_SERVICE);
 		alarmManager.cancel(operation);
 	}
+	
 
 }

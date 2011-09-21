@@ -1,12 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<PreferenceScreen
-  xmlns:android="http://schemas.android.com/apk/res/android">
-    <ListPreference android:title="Sync period" android:entryValues="@array/sync_period_values" android:entries="@array/sync_period_entries" android:persistent="true" android:defaultValue="0" android:key="sync_period"></ListPreference>
-    <Preference android:title="Account Setting" android:key="account_setting"></Preference>
-    <PreferenceCategory android:title="help"></PreferenceCategory><Preference android:key="help" android:summary="Open web site in default browser." android:title="Help"></Preference>
-    <PreferenceCategory android:title="more"></PreferenceCategory><Preference android:summary="Reload timeline from local persistent database." android:key="reload" android:title="Reload"></Preference><Preference android:summary="Clear persistent timeline database." android:key="clear" android:title="Clear"></Preference>
-    
-    
-    
-    
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+	<ListPreference android:title="Sync period"
+		android:entryValues="@array/sync_period_values" android:entries="@array/sync_period_entries"
+		android:persistent="true" android:defaultValue="0" android:key="sync_period"></ListPreference>
+	<Preference android:title="Account Setting" android:key="account_setting"></Preference>
+	<PreferenceCategory android:title="help"></PreferenceCategory>
+	<Preference android:key="help" android:summary="Open web site in default browser."
+		android:title="Help"></Preference>
+	<PreferenceCategory android:title="more"></PreferenceCategory>
+	<Preference android:summary="Reload timeline from local persistent database."
+		android:key="reload" android:title="Reload"></Preference><Preference android:key="purge" android:title="Purge" android:summary="Purge old timeline data."></Preference><Preference android:summary="Clear persistent timeline database."
+		android:key="clear" android:title="Clear"></Preference>
+	
+		
 </PreferenceScreen>
