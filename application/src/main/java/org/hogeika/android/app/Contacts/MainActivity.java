@@ -5,6 +5,7 @@ import org.hogeika.android.app.Contacts.R;
 import org.hogeika.android.app.Contacts.ContactsApplication.InitializeCallback;
 
 import android.app.AlertDialog;
+import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.app.TabActivity;
 import android.content.DialogInterface;
@@ -13,6 +14,7 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.SystemClock;
+import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -23,9 +25,9 @@ import android.widget.TabHost.TabSpec;
 public class MainActivity extends TabActivity {
 
     private static String TAG = "ContactFlow";
+	private static final int DIALOG_PROGRESS = 1;
     
     private ContactsApplication mApplication;
-	private ProgressDialog mProgressDlg = null;
 	private long mLastLightSyncTime = 0;
 	private long mLastHeavySyncTime = 0;
 	
@@ -42,17 +44,9 @@ public class MainActivity extends TabActivity {
         setContentView(R.layout.main);
         
 		mApplication = (ContactsApplication)getApplication();
-		mProgressDlg = new ProgressDialog(this);
-		mProgressDlg.setCancelable(false);
-		mProgressDlg.setMessage("Loading..");
-		mProgressDlg.show();
 		mApplication.initializeAsync(new InitializeCallback(){
 			@Override
 			public void onComplete() {
-				if(mProgressDlg != null){
-					mProgressDlg.dismiss();
-					mProgressDlg = null;
-				}
 				runOnUiThread(new Runnable() {
 					
 					@Override
@@ -69,7 +63,8 @@ public class MainActivity extends TabActivity {
 				        spec = tabHost.newTabSpec("activity").setIndicator("Activity").setContent(intent);
 				        tabHost.addTab(spec);
 				        
-				        tabHost.setCurrentTab(0);
+				        String tag = PreferenceManager.getDefaultSharedPreferences(MainActivity.this).getString("start_tab", "recent");
+				        tabHost.setCurrentTabByTag(tag);
 				        
 						TimeLineManager timeLineManager = mApplication.getTimeLineManager();
 						if(timeLineManager.getManagerCount()<=1){
@@ -125,22 +120,18 @@ public class MainActivity extends TabActivity {
 		
     }
     
-    @Override
-    public void onDestroy(){
-		if(mProgressDlg != null){
-			mProgressDlg.dismiss();
-			mProgressDlg = null;
-		}
-		super.onDestroy();
-    }
-    
 	@Override
 	protected void onResume() {
 		super.onResume();
+		showDialog(DIALOG_PROGRESS);
 		mApplication.initializeAsync(new InitializeCallback() {
 			@Override
 			public void onComplete() {
 				syncTimeLine(Manager.SYNC_TYPE_LIGHT);
+				try {
+					dismissDialog(DIALOG_PROGRESS);
+				}catch(IllegalArgumentException e){
+				}
 			}
 		});
 	}
@@ -177,7 +168,19 @@ public class MainActivity extends TabActivity {
 			return super.onOptionsItemSelected(item);
 		}
 	}
-
+	
+	@Override
+	protected Dialog onCreateDialog(int id) {
+		switch(id){
+		case DIALOG_PROGRESS:
+			ProgressDialog dialog = new ProgressDialog(this);
+			dialog.setCancelable(false);
+			dialog.setMessage("Loading..");
+			return dialog;
+		}
+		return super.onCreateDialog(id);
+	}
+	
 	private void syncTimeLine(int type){
 		long now = SystemClock.elapsedRealtime();
 		if(type == Manager.SYNC_TYPE_LIGHT){

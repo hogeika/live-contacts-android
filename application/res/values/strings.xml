@@ -16,4 +16,12 @@
 		<item>3600000</item>
 		<item>300000</item>
 	</string-array>
+	<string-array name="start_tab_entries">
+		<item>Recent</item>
+		<item>Activity</item>
+	</string-array>
+	<string-array name="start_tab_values">
+		<item>recent</item>
+		<item>activity</item>
+	</string-array>
 </resources>

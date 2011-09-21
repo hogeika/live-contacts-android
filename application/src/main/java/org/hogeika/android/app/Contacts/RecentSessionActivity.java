@@ -6,11 +6,11 @@ import java.util.List;
 import java.util.SortedMap;
 import java.util.SortedSet;
 
-import org.hogeika.android.app.Contacts.R;
 import org.hogeika.android.app.Contacts.TimeLineManager.TimeLineItem;
 import org.hogeika.android.app.Contacts.TimeLineManager.TimeLineUser;
 
 import android.app.Activity;
+import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
@@ -30,6 +30,8 @@ import android.widget.ListView;
 import android.widget.TextView;
 
 public class RecentSessionActivity extends Activity {
+	private static final int DIALOG_PROGRESS = 2;
+
 	ContactsApplication mApplication;
 
 	private class ContactData {
@@ -150,26 +152,40 @@ public class RecentSessionActivity extends Activity {
 				startActivity(intent);
 			}
 		});
+	}
+
+	@Override
+	protected void onResume() {
+		super.onResume();
 		updateTimeLine(true);
 		mApplication.getTimeLineManager().addListener(mListener);
 	}
 
 	@Override
-	protected void onDestroy() {
+	protected void onPause() {
 		mApplication.getTimeLineManager().removeListener(mListener);
-		super.onDestroy();
+		super.onPause();
 	}
-	
+
+	@Override
+	protected Dialog onCreateDialog(int id) {
+		switch(id){
+		case DIALOG_PROGRESS:
+			ProgressDialog dialog = new ProgressDialog(this);
+			dialog.setCancelable(false);
+			return dialog;
+		}
+		return super.onCreateDialog(id);
+	}
+
 	private boolean mIsUpdating = false;
-	private ProgressDialog mProgressDialog = null;
 	private synchronized void updateTimeLine(final boolean showDialog) {
 		if(mIsUpdating){
 			return;
 		}
+		mIsUpdating = true;
 		if(showDialog){
-			mProgressDialog = new ProgressDialog(this);
-			mProgressDialog.setCancelable(false);
-			mProgressDialog.show();
+			showDialog(DIALOG_PROGRESS);
 		}
 		new Thread(new Runnable() {
 			@Override
@@ -193,8 +209,10 @@ public class RecentSessionActivity extends Activity {
 						mList.addAll(tmpList);
 						mAdapter.notifyDataSetChanged();
 						if(showDialog){
-							mProgressDialog.dismiss();
-							mProgressDialog =null;
+							try {
+								dismissDialog(DIALOG_PROGRESS);
+							}catch(IllegalArgumentException e){
+							}
 						}
 						mIsUpdating = false;
 					}
