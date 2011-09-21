@@ -11,6 +11,7 @@ import android.accounts.AccountManager;
 import android.accounts.AuthenticatorDescription;
 import android.accounts.OnAccountsUpdateListener;
 import android.app.Activity;
+import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
@@ -30,6 +31,8 @@ import android.widget.ListView;
 import android.widget.TextView;
 
 public class AccountSettingActivity extends Activity {
+	private static final int DIALOG_PROGRESS = 4;
+	
 	private static final String[] KNOWN_ACCOUNT_TYPES = {
 		/*"com.google",*/
 		/*"com.facebook.auth.login",*/
@@ -42,7 +45,6 @@ public class AccountSettingActivity extends Activity {
 	private List<AccountData> mAccounts;
 	private AccountAdapter mAdapter;
 	OnAccountsUpdateListener mListener;
-	private ProgressDialog mProgressDialog;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -50,7 +52,6 @@ public class AccountSettingActivity extends Activity {
 		setContentView(R.layout.account_setting);
 
 		mApplication = (ContactsApplication)getApplication();
-		mProgressDialog = new ProgressDialog(this);
 		
 		mAccounts = new ArrayList<AccountData>();
 		final ListView listView = (ListView)findViewById(R.id.ListView_accounts);
@@ -59,7 +60,7 @@ public class AccountSettingActivity extends Activity {
 		listView.setOnItemClickListener(new OnItemClickListener() {
 			@Override
 			public void onItemClick(AdapterView<?> parent, View view, final int position, long id) {
-				mProgressDialog.show();
+				showDialog(DIALOG_PROGRESS);
 				new Handler().postDelayed(new Runnable() {
 					@Override
 					public void run() {
@@ -105,11 +106,20 @@ public class AccountSettingActivity extends Activity {
 		super.onPause();
 //		AccountManager am = AccountManager.get(this);
 //		am.removeOnAccountsUpdatedListener(mListener);
-		if(mProgressDialog.isShowing()){
-			mProgressDialog.dismiss();
-		}
+		dismissDialog(DIALOG_PROGRESS);
 	}
 
+	@Override
+	protected Dialog onCreateDialog(int id) {
+		switch(id){
+		case DIALOG_PROGRESS:
+			ProgressDialog dialog = new ProgressDialog(this);
+			dialog.setCancelable(false);
+			return dialog;
+		}
+		return super.onCreateDialog(id);
+	}
+	
 	@Override
 	public void onWindowFocusChanged(boolean hasFocus) {
 		super.onWindowFocusChanged(hasFocus);

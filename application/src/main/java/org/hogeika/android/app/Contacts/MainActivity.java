@@ -26,6 +26,9 @@ public class MainActivity extends TabActivity {
 
     private static String TAG = "ContactFlow";
 	private static final int DIALOG_PROGRESS = 1;
+	private static final int DIALOG_ALERT_INIT = 2;
+	private static final int DIALOG_ALERT_ACCOUNT = 3;
+	
     
     private ContactsApplication mApplication;
 	private long mLastLightSyncTime = 0;
@@ -68,49 +71,11 @@ public class MainActivity extends TabActivity {
 				        
 						TimeLineManager timeLineManager = mApplication.getTimeLineManager();
 						if(timeLineManager.getManagerCount()<=1){
-							AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
-							builder.setMessage("Contact Flow を利用するには、Twitter 公式アプリ、または Mixi 公式アプリのどちらか、または（できれば）両方がインストールされアカウントが設定されている必要があります。\n詳しくはHelpを参照してください。");
-							builder.setPositiveButton("Help(Web)", new OnClickListener() {
-								@Override
-								public void onClick(DialogInterface dialog, int which) {
-									String url = getResources().getString(R.string.help_url);
-									Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-									startActivity(intent);
-								}
-							});
-							builder.setNegativeButton("Cancel", new OnClickListener() {
-								@Override
-								public void onClick(DialogInterface dialog, int which) {
-								}
-							});
-							builder.create().show();
+							showDialog(DIALOG_ALERT_INIT);
 							return;
 						}
 						if(timeLineManager.getActiveAccountCount() == 0){
-							AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
-							builder.setMessage("連携するアカウントを設定してください。メニューボタンを押して「Setting」を選び「Account Settings」からも設定できます。\n設定後、メニューから「sync」を実行してください。");
-							builder.setPositiveButton("設定する", new OnClickListener() {
-								@Override
-								public void onClick(DialogInterface dialog, int which) {
-									Intent intent = new Intent(MainActivity.this, AccountSettingActivity.class);
-									startActivity(intent);
-								}
-							});
-							builder.setNeutralButton("Help(Web)", new OnClickListener() {
-								@Override
-								public void onClick(DialogInterface dialog, int which) {
-									String url = getResources().getString(R.string.help_url);
-									Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-									startActivity(intent);
-								}
-							});
-							builder.setNegativeButton("Cancel", new OnClickListener() {
-								@Override
-								public void onClick(DialogInterface dialog, int which) {
-									
-								}
-							});
-							builder.create().show();
+							showDialog(DIALOG_ALERT_ACCOUNT);
 							return;
 						}
 					}
@@ -171,12 +136,57 @@ public class MainActivity extends TabActivity {
 	
 	@Override
 	protected Dialog onCreateDialog(int id) {
+		AlertDialog.Builder builder;
 		switch(id){
 		case DIALOG_PROGRESS:
 			ProgressDialog dialog = new ProgressDialog(this);
 			dialog.setCancelable(false);
 			dialog.setMessage("Loading..");
 			return dialog;
+			
+		case DIALOG_ALERT_INIT:
+			builder = new AlertDialog.Builder(MainActivity.this);
+			builder.setMessage("Contact Flow を利用するには、Twitter 公式アプリ、または Mixi 公式アプリのどちらか、または（できれば）両方がインストールされアカウントが設定されている必要があります。\n詳しくはHelpを参照してください。");
+			builder.setPositiveButton("Help(Web)", new OnClickListener() {
+				@Override
+				public void onClick(DialogInterface dialog, int which) {
+					String url = getResources().getString(R.string.help_url);
+					Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+					startActivity(intent);
+				}
+			});
+			builder.setNegativeButton("Cancel", new OnClickListener() {
+				@Override
+				public void onClick(DialogInterface dialog, int which) {
+				}
+			});
+			return builder.create();
+			
+		case DIALOG_ALERT_ACCOUNT:
+			builder = new AlertDialog.Builder(MainActivity.this);
+			builder.setMessage("連携するアカウントを設定してください。メニューボタンを押して「Setting」を選び「Account Settings」からも設定できます。\n設定後、メニューから「sync」を実行してください。");
+			builder.setPositiveButton("設定する", new OnClickListener() {
+				@Override
+				public void onClick(DialogInterface dialog, int which) {
+					Intent intent = new Intent(MainActivity.this, AccountSettingActivity.class);
+					startActivity(intent);
+				}
+			});
+			builder.setNeutralButton("Help(Web)", new OnClickListener() {
+				@Override
+				public void onClick(DialogInterface dialog, int which) {
+					String url = getResources().getString(R.string.help_url);
+					Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+					startActivity(intent);
+				}
+			});
+			builder.setNegativeButton("Cancel", new OnClickListener() {
+				@Override
+				public void onClick(DialogInterface dialog, int which) {
+					
+				}
+			});
+			return builder.create();
 		}
 		return super.onCreateDialog(id);
 	}
