@@ -18,6 +18,10 @@
         <action android:name="android.intent.action.MAIN" />
         <category android:name="android.intent.category.LAUNCHER" />
       </intent-filter>
+      <intent-filter>
+          <action android:name="android.intent.action.CALL_BUTTON"></action>
+          <category android:name="android.intent.category.DEFAULT"></category>
+      </intent-filter>
     </activity>
     <activity android:name="RecentSessionActivity"></activity>
     <activity android:name=".ActivityStreamActivity"></activity>
