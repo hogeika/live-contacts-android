@@ -11,6 +11,7 @@ import android.app.TabActivity;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 import android.content.Intent;
+import android.content.res.Resources;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.SystemClock;
@@ -57,13 +58,14 @@ public class MainActivity extends TabActivity {
 				        TabHost tabHost = getTabHost();
 				        TabSpec spec;
 				        Intent intent;
+				        Resources res = getResources();
 				        
 				        intent = new Intent(MainActivity.this, RecentSessionActivity.class);
-				        spec = tabHost.newTabSpec("recent").setIndicator("Recent").setContent(intent);
+				        spec = tabHost.newTabSpec("contacts").setIndicator("Contacts",res.getDrawable(R.drawable.ic_tab_contacts)).setContent(intent);
 				        tabHost.addTab(spec);
 
 				        intent = new Intent(MainActivity.this, ActivityStreamActivity.class);
-				        spec = tabHost.newTabSpec("activity").setIndicator("Activity").setContent(intent);
+				        spec = tabHost.newTabSpec("activity").setIndicator("Activity",res.getDrawable(R.drawable.ic_tab_activity)).setContent(intent);
 				        tabHost.addTab(spec);
 				        
 				        String tag = PreferenceManager.getDefaultSharedPreferences(MainActivity.this).getString("start_tab", "recent");

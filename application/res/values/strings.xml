@@ -21,7 +21,7 @@
 		<item>Activity</item>
 	</string-array>
 	<string-array name="start_tab_values">
-		<item>recent</item>
+		<item>contacts</item>
 		<item>activity</item>
 	</string-array>
 </resources>
