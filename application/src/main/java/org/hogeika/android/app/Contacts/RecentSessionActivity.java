@@ -129,6 +129,9 @@ public class RecentSessionActivity extends Activity {
 
 	private ArrayList<ContactData> mList;
 	private ContactAdapter mAdapter;
+	private ListView mListView;
+	private int mFirstVisiblePosition = 0;
+	private int mFirstChildTop = 0;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -139,10 +142,10 @@ public class RecentSessionActivity extends Activity {
 		
 		mList = new ArrayList<ContactData>();
 		mAdapter = new ContactAdapter(this, mList);
-		ListView listView = (ListView)findViewById(R.id.ListView_recentSession);
-		listView.setAdapter(mAdapter);
+		mListView = (ListView)findViewById(R.id.ListView_recentSession);
+		mListView.setAdapter(mAdapter);
 		
-		listView.setOnItemClickListener(new OnItemClickListener() {
+		mListView.setOnItemClickListener(new OnItemClickListener() {
 			@Override
 			public void onItemClick(AdapterView<?> parent, View view,
 					int position, long id) {
@@ -151,7 +154,9 @@ public class RecentSessionActivity extends Activity {
 				intent.putExtra(ContactSessionActivity.EXTRA_CONTACT_LOOKUP_URI, data.getContactLookupUri());
 				startActivity(intent);
 			}
-		});
+		});	
+		mFirstVisiblePosition = 0;
+		mFirstChildTop = 0;
 	}
 
 	@Override
@@ -165,6 +170,24 @@ public class RecentSessionActivity extends Activity {
 	protected void onPause() {
 		mApplication.getTimeLineManager().removeListener(mListener);
 		super.onPause();
+	}
+	
+	@Override
+	protected void onRestoreInstanceState(Bundle savedInstanceState) {
+		super.onRestoreInstanceState(savedInstanceState);
+		mFirstVisiblePosition = savedInstanceState.getInt("FVP");
+		mFirstChildTop = savedInstanceState.getInt("FCT");
+	}
+
+	@Override
+	protected void onSaveInstanceState(Bundle outState) {
+		super.onSaveInstanceState(outState);
+		outState.putInt("FVP", mListView.getFirstVisiblePosition());
+		if(mListView.getChildCount()>0){
+			outState.putInt("FCT", mListView.getChildAt(0).getTop());
+		}else{
+			outState.putInt("FCT", 0);
+		}
 	}
 
 	@Override
@@ -208,6 +231,11 @@ public class RecentSessionActivity extends Activity {
 						mList.clear();		
 						mList.addAll(tmpList);
 						mAdapter.notifyDataSetChanged();
+						if(mFirstVisiblePosition > 0 || mFirstChildTop > 0){
+							mListView.setSelectionFromTop(mFirstVisiblePosition, mFirstChildTop);
+						}
+						mFirstVisiblePosition = 0;
+						mFirstChildTop = 0;
 						if(showDialog){
 							try {
 								dismissDialog(DIALOG_PROGRESS);

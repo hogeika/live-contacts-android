@@ -25,7 +25,8 @@ import android.widget.TabHost.TabSpec;
 
 public class MainActivity extends TabActivity {
 
-    private static String TAG = "ContactFlow";
+    private static final String SAVED_STATE_CURRENT_TAB = "currentTab";
+	private static String TAG = "ContactFlow";
 	private static final int DIALOG_PROGRESS = 1;
 	private static final int DIALOG_ALERT_INIT = 2;
 	private static final int DIALOG_ALERT_ACCOUNT = 3;
@@ -42,10 +43,19 @@ public class MainActivity extends TabActivity {
      * recently supplied in onSaveInstanceState(Bundle). <b>Note: Otherwise it is null.</b>
      */
     @Override
-    public void onCreate(Bundle savedInstanceState) {
+    public void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Log.i(TAG, "onCreate");
         setContentView(R.layout.main);
+
+        // InitializeCallbck is call after onRestoreInstanceState()
+        String tag;
+        if(savedInstanceState == null){ // only first onCreate()
+        	tag = PreferenceManager.getDefaultSharedPreferences(MainActivity.this).getString("start_tab", "contacts");
+        } else{
+    		tag = savedInstanceState.getString(SAVED_STATE_CURRENT_TAB);
+        }
+        final String currentTab = tag;
         
 		mApplication = (ContactsApplication)getApplication();
 		mApplication.initializeAsync(new InitializeCallback(){
@@ -68,8 +78,7 @@ public class MainActivity extends TabActivity {
 				        spec = tabHost.newTabSpec("activity").setIndicator("Activity",res.getDrawable(R.drawable.ic_tab_activity)).setContent(intent);
 				        tabHost.addTab(spec);
 				        
-				        String tag = PreferenceManager.getDefaultSharedPreferences(MainActivity.this).getString("start_tab", "recent");
-				        tabHost.setCurrentTabByTag(tag);
+			        	tabHost.setCurrentTabByTag(currentTab);
 				        
 						TimeLineManager timeLineManager = mApplication.getTimeLineManager();
 						if(timeLineManager.getManagerCount()<=1){
@@ -101,6 +110,12 @@ public class MainActivity extends TabActivity {
 				}
 			}
 		});
+	}
+
+	@Override
+	protected void onSaveInstanceState(Bundle outState) {
+		super.onSaveInstanceState(outState);
+		outState.putString(SAVED_STATE_CURRENT_TAB, getTabHost().getCurrentTabTag());
 	}
 
 	@Override
