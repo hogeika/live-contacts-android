@@ -15,12 +15,14 @@ import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.ContactsContract;
 import android.text.format.DateUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
+import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.ListView;
@@ -144,14 +146,21 @@ public class RecentSessionActivity extends AbstractTimeLiveViewActivity<ContactD
 		
 		mListView.setOnItemClickListener(new OnItemClickListener() {
 			@Override
-			public void onItemClick(AdapterView<?> parent, View view,
-					int position, long id) {
+			public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
 				ContactData data = mAdapter.getItem(position);
 				Intent intent = new Intent(getApplicationContext(), ContactSessionActivity.class);
 				intent.putExtra(ContactSessionActivity.EXTRA_CONTACT_LOOKUP_URI, data.getContactLookupUri());
 				startActivity(intent);
 			}
-		});	
+		});
+		mListView.setOnItemLongClickListener(new OnItemLongClickListener() {
+			@Override
+			public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+				ContactData data = mAdapter.getItem(position);
+				ContactsContract.QuickContact.showQuickContact(getApplicationContext(), view, data.getContactLookupUri(), ContactsContract.QuickContact.MODE_MEDIUM, null);
+				return true;
+			}
+		});
 		setListView(mListView, mAdapter, mList);
 	}
 

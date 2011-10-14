@@ -131,7 +131,7 @@ public class ContactSessionActivity extends AbstractTimeLiveViewActivity<TimeLin
 
 		QuickContactBadge badge = (QuickContactBadge)findViewById(R.id.QuickContactBadge_contact);
 		badge.assignContactUri(mLookupUri);
-		badge.setMode(QuickContact.MODE_SMALL);
+		badge.setMode(QuickContact.MODE_MEDIUM);
 		InputStream is = Contacts.openContactPhotoInputStream(getContentResolver(), Contacts.lookupContact(getContentResolver(), mLookupUri));
 		if(is != null){
 			Bitmap icon = BitmapFactory.decodeStream(is);
