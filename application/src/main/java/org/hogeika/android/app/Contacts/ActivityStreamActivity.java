@@ -7,9 +7,6 @@ import java.util.List;
 import org.hogeika.android.app.Contacts.TimeLineManager.ActivityStreamItem;
 import org.hogeika.android.app.Contacts.TimeLineManager.TimeLineUser;
 
-import android.app.Activity;
-import android.app.Dialog;
-import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -25,11 +22,7 @@ import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
 
-public class ActivityStreamActivity extends Activity {
-	private static final int DIALOG_PROGRESS = 3;
-
-	ContactsApplication mApplication;
-
+public class ActivityStreamActivity extends AbstractTimeLiveViewActivity<ActivityStreamItem> {
 	private class ContactAdapter extends ArrayAdapter<ActivityStreamItem>{
 
 		public ContactAdapter(Context context, List<ActivityStreamItem> objects) {
@@ -72,29 +65,14 @@ public class ActivityStreamActivity extends Activity {
 		}		
 	}
 	
-	private final TimeLineManager.Listener mListener = new TimeLineManager.Listener() {
-		@Override
-		public void onUpdate() {
-			updateTimeLine(false);
-		}
-	};
-
-	private ArrayList<ActivityStreamItem> mList;
-	private ContactAdapter mAdapter;
-	private ListView mListView;
-	private int mFirstVisiblePosition = 0;
-	private int mFirstChildTop = 0;
-	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_stream);
-
-		mApplication = (ContactsApplication)getApplication();
 		
-		mList = new ArrayList<ActivityStreamItem>();
-		mAdapter = new ContactAdapter(this, mList);
-		mListView = (ListView)findViewById(R.id.ListView_activityStream);
+		ArrayList<ActivityStreamItem> mList = new ArrayList<ActivityStreamItem>();
+		final ContactAdapter mAdapter = new ContactAdapter(this, mList);
+		ListView mListView = (ListView)findViewById(R.id.ListView_activityStream);
 		mListView.setAdapter(mAdapter);
 		
 		mListView.setOnItemClickListener(new OnItemClickListener() {
@@ -108,88 +86,12 @@ public class ActivityStreamActivity extends Activity {
 				}
 			}
 		});
-		mFirstVisiblePosition = 0;
-		mFirstChildTop = 0;
+		setListView(mListView, mAdapter, mList);
 	}
 
 	@Override
-	protected void onResume() {
-		super.onResume();
-		updateTimeLine(true);
-		mApplication.getTimeLineManager().addListener(mListener);
+	protected void onTimeLineUpdated(TimeLineManager manager, List<ActivityStreamItem> tmpList) {
+		List<ActivityStreamItem> stream = manager.getActivityStream();
+		tmpList.addAll(stream);
 	}
-
-	@Override
-	protected void onPause() {
-		mApplication.getTimeLineManager().removeListener(mListener);
-		super.onPause();
-	}
-	
-	@Override
-	protected void onRestoreInstanceState(Bundle savedInstanceState) {
-		super.onRestoreInstanceState(savedInstanceState);
-		mFirstVisiblePosition = savedInstanceState.getInt("FVP");
-		mFirstChildTop = savedInstanceState.getInt("FCT");
-	}
-
-	@Override
-	protected void onSaveInstanceState(Bundle outState) {
-		super.onSaveInstanceState(outState);
-		outState.putInt("FVP", mListView.getFirstVisiblePosition());
-		if(mListView.getChildCount()>0){
-			outState.putInt("FCT", mListView.getChildAt(0).getTop());
-		}else{
-			outState.putInt("FCT", 0);
-		}
-	}
-
-	@Override
-	protected Dialog onCreateDialog(int id) {
-		switch(id){
-		case DIALOG_PROGRESS:
-			ProgressDialog dialog = new ProgressDialog(this);
-			dialog.setCancelable(false);
-			return dialog;
-		}
-		return super.onCreateDialog(id);
-	}
-	
-	private boolean mIsUpdating = false;
-	private synchronized void updateTimeLine(final boolean showDialog) {
-		if(mIsUpdating){
-			return;
-		}
-		mIsUpdating = true;
-		if(showDialog){
-			showDialog(DIALOG_PROGRESS);
-		}
-		new Thread(new Runnable() {
-			@Override
-			public void run() {
-				TimeLineManager manager = mApplication.getTimeLineManager();
-				final List<ActivityStreamItem> stream = manager.getActivityStream();
-				runOnUiThread(new Runnable() {				
-					@Override
-					public void run() {
-						mList.clear();		
-						mList.addAll(stream);
-						mAdapter.notifyDataSetChanged();
-						if(mFirstVisiblePosition > 0 || mFirstChildTop > 0){
-							mListView.setSelectionFromTop(mFirstVisiblePosition, mFirstChildTop);
-						}
-						mFirstVisiblePosition = 0;
-						mFirstChildTop = 0;
-						if(showDialog){
-							try {
-								dismissDialog(DIALOG_PROGRESS);
-							}catch(IllegalArgumentException e){
-							}
-						}
-						mIsUpdating = false;
-					}
-				});
-			}
-		}).start();
-	}
-
 }

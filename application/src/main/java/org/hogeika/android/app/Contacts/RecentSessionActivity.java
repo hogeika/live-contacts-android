@@ -9,9 +9,6 @@ import java.util.SortedSet;
 import org.hogeika.android.app.Contacts.TimeLineManager.TimeLineItem;
 import org.hogeika.android.app.Contacts.TimeLineManager.TimeLineUser;
 
-import android.app.Activity;
-import android.app.Dialog;
-import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -29,46 +26,61 @@ import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
 
-public class RecentSessionActivity extends Activity {
-	private static final int DIALOG_PROGRESS = 2;
+interface ContactData {
+	Bitmap getIcon();
+	long getTimeStamp();
+	int getDirection();
+	Uri getContactLookupUri();
+	String getSummary();
+	String getTitle();
+	Drawable getTypeIcon();
+	String getDisplayName();
+}
 
-	ContactsApplication mApplication;
-
-	private class ContactData {
+public class RecentSessionActivity extends AbstractTimeLiveViewActivity<ContactData> {
+	private class ContactDataImpl implements ContactData {
 		private final TimeLineItem mItem;
 		private final TimeLineUser mUser;
 
-		public ContactData(TimeLineItem item, TimeLineUser user) {
+		public ContactDataImpl(TimeLineItem item, TimeLineUser user) {
 			super();
 			mItem = item;
 			mUser = user;
 		}
-		private Bitmap getIcon() {
+		@Override
+		public Bitmap getIcon() {
 			return mUser.getBitmapIcon();
 		}
-		private String getDisplayName() {
+		@Override
+		public String getDisplayName() {
 			return mUser.getDisplayName();
 		}
-		private Drawable getTypeIcon(){
+		@Override
+		public Drawable getTypeIcon(){
 			return mItem.getIconDrawable();
 		}
-		private String getTitle(){
+		@Override
+		public String getTitle(){
 			return mItem.getTitle();
 		}
-		private String getSummary() {
+		@Override
+		public String getSummary() {
 			return mItem.getSummary();
 		}
-		private Uri getContactLookupUri() {
+		@Override
+		public Uri getContactLookupUri() {
 			return mUser.getContactLookupUri();
 		}
-		private int getDirection(){
+		@Override
+		public int getDirection(){
 			return mItem.getDirection();
 		}
-		private long getTimeStamp(){
+		@Override
+		public long getTimeStamp(){
 			return mItem.getTimeStamp();
 		}
 	}
-
+	
 	private class ContactAdapter extends ArrayAdapter<ContactData>{
 
 		public ContactAdapter(Context context, List<ContactData> objects) {
@@ -120,29 +132,14 @@ public class RecentSessionActivity extends Activity {
 		}		
 	}
 	
-	private final TimeLineManager.Listener mListener = new TimeLineManager.Listener() {
-		@Override
-		public void onUpdate() {
-			updateTimeLine(false);
-		}
-	};
-
-	private ArrayList<ContactData> mList;
-	private ContactAdapter mAdapter;
-	private ListView mListView;
-	private int mFirstVisiblePosition = 0;
-	private int mFirstChildTop = 0;
-	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.recent_session);
 		
-		mApplication = (ContactsApplication)getApplication();
-		
-		mList = new ArrayList<ContactData>();
-		mAdapter = new ContactAdapter(this, mList);
-		mListView = (ListView)findViewById(R.id.ListView_recentSession);
+		ArrayList<ContactData> mList = new ArrayList<ContactData>();
+		final ContactAdapter mAdapter = new ContactAdapter(this, mList);
+		ListView mListView = (ListView)findViewById(R.id.ListView_recentSession);
 		mListView.setAdapter(mAdapter);
 		
 		mListView.setOnItemClickListener(new OnItemClickListener() {
@@ -155,97 +152,20 @@ public class RecentSessionActivity extends Activity {
 				startActivity(intent);
 			}
 		});	
-		mFirstVisiblePosition = 0;
-		mFirstChildTop = 0;
+		setListView(mListView, mAdapter, mList);
 	}
 
 	@Override
-	protected void onResume() {
-		super.onResume();
-		updateTimeLine(true);
-		mApplication.getTimeLineManager().addListener(mListener);
-	}
-
-	@Override
-	protected void onPause() {
-		mApplication.getTimeLineManager().removeListener(mListener);
-		super.onPause();
-	}
-	
-	@Override
-	protected void onRestoreInstanceState(Bundle savedInstanceState) {
-		super.onRestoreInstanceState(savedInstanceState);
-		mFirstVisiblePosition = savedInstanceState.getInt("FVP");
-		mFirstChildTop = savedInstanceState.getInt("FCT");
-	}
-
-	@Override
-	protected void onSaveInstanceState(Bundle outState) {
-		super.onSaveInstanceState(outState);
-		outState.putInt("FVP", mListView.getFirstVisiblePosition());
-		if(mListView.getChildCount()>0){
-			outState.putInt("FCT", mListView.getChildAt(0).getTop());
-		}else{
-			outState.putInt("FCT", 0);
-		}
-	}
-
-	@Override
-	protected Dialog onCreateDialog(int id) {
-		switch(id){
-		case DIALOG_PROGRESS:
-			ProgressDialog dialog = new ProgressDialog(this);
-			dialog.setCancelable(false);
-			return dialog;
-		}
-		return super.onCreateDialog(id);
-	}
-
-	private boolean mIsUpdating = false;
-	private synchronized void updateTimeLine(final boolean showDialog) {
-		if(mIsUpdating){
-			return;
-		}
-		mIsUpdating = true;
-		if(showDialog){
-			showDialog(DIALOG_PROGRESS);
-		}
-		new Thread(new Runnable() {
-			@Override
-			public void run() {
-				TimeLineManager manager = mApplication.getTimeLineManager();
-				SortedMap<TimeLineUser, SortedSet<TimeLineItem>> contactsTiimeline = manager.getRecentContacts();
-				final List<ContactData> tmpList = new ArrayList<ContactData>();
-				for(TimeLineUser user : contactsTiimeline.keySet()){
-					SortedSet<TimeLineItem> timeLine = contactsTiimeline.get(user);
-					if(timeLine == null){
-						continue;
-					}
-					TimeLineItem item = timeLine.first();
-					ContactData data = new ContactData(item, user);
-					tmpList.add(data);
-				}
-				runOnUiThread(new Runnable() {				
-					@Override
-					public void run() {
-						mList.clear();		
-						mList.addAll(tmpList);
-						mAdapter.notifyDataSetChanged();
-						if(mFirstVisiblePosition > 0 || mFirstChildTop > 0){
-							mListView.setSelectionFromTop(mFirstVisiblePosition, mFirstChildTop);
-						}
-						mFirstVisiblePosition = 0;
-						mFirstChildTop = 0;
-						if(showDialog){
-							try {
-								dismissDialog(DIALOG_PROGRESS);
-							}catch(IllegalArgumentException e){
-							}
-						}
-						mIsUpdating = false;
-					}
-				});
+	protected void onTimeLineUpdated(TimeLineManager manager, List<ContactData> tmpList) {
+		SortedMap<TimeLineUser, SortedSet<TimeLineItem>> contactsTiimeline = manager.getRecentContacts();
+		for(TimeLineUser user : contactsTiimeline.keySet()){
+			SortedSet<TimeLineItem> timeLine = contactsTiimeline.get(user);
+			if(timeLine == null){
+				continue;
 			}
-		}).start();
+			TimeLineItem item = timeLine.first();
+			ContactData data = new ContactDataImpl(item, user);
+			tmpList.add(data);
+		}
 	}
 }

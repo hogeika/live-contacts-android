@@ -7,13 +7,9 @@ import java.util.List;
 import java.util.SortedSet;
 
 import org.apache.commons.lang.StringUtils;
-import org.hogeika.android.app.Contacts.R;
 import org.hogeika.android.app.Contacts.TimeLineManager.TimeLineItem;
 
-import android.app.Activity;
 import android.app.AlertDialog;
-import android.app.Dialog;
-import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
@@ -35,8 +31,7 @@ import android.widget.ListView;
 import android.widget.QuickContactBadge;
 import android.widget.TextView;
 
-public class ContactSessionActivity extends Activity {
-	private static final int DIALOG_PROGRESS = 2;
+public class ContactSessionActivity extends AbstractTimeLiveViewActivity<TimeLineItem> {
 	public static final String EXTRA_CONTACT_LOOKUP_URI = "contact_lookup_uri";
 	
 	private class SessionDataAdapter extends ArrayAdapter<TimeLineItem> {
@@ -96,34 +91,19 @@ public class ContactSessionActivity extends Activity {
 		}				
 	}
 	
-	private ContactsApplication mApplication;
-	private ArrayList<TimeLineItem> mList;
-	private SessionDataAdapter mAdapter;
-	private ListView mListView;
-	private int mFirstVisiblePosition = 0;
-	private int mFirstChildTop = 0;
-
 	private Uri mLookupUri;
-	private final TimeLineManager.Listener mListener = new TimeLineManager.Listener() {
-		@Override
-		public void onUpdate() {
-			updateTimeLine(false);
-		}
-	};
 		
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.contact_session);
 		
-		mApplication = (ContactsApplication)getApplication();
-		
 		Intent intent = getIntent();
 		mLookupUri = intent.getParcelableExtra(EXTRA_CONTACT_LOOKUP_URI);
 		
-		mList = new ArrayList<TimeLineItem>();
-		mAdapter = new SessionDataAdapter(this, mList);
-		mListView = (ListView)findViewById(R.id.ListView_contactSession);
+		ArrayList<TimeLineItem> mList = new ArrayList<TimeLineItem>();
+		final SessionDataAdapter mAdapter = new SessionDataAdapter(this, mList);
+		ListView mListView = (ListView)findViewById(R.id.ListView_contactSession);
 		mListView.setAdapter(mAdapter);
 		mListView.setOnItemClickListener(new OnItemClickListener() {
 			@Override
@@ -147,8 +127,7 @@ public class ContactSessionActivity extends Activity {
 				}
 			}
 		});
-		mFirstVisiblePosition = 0;
-		mFirstChildTop = 0;
+		setListView(mListView, mAdapter, mList);
 
 		QuickContactBadge badge = (QuickContactBadge)findViewById(R.id.QuickContactBadge_contact);
 		badge.assignContactUri(mLookupUri);
@@ -167,90 +146,10 @@ public class ContactSessionActivity extends Activity {
 	}
 
 	@Override
-	protected void onDestroy() {
-		mApplication.getTimeLineManager().removeListener(mListener);
-		super.onDestroy();
-	}
-
-	@Override
-	protected void onResume() {
-		super.onResume();
-		updateTimeLine(true);
-		mApplication.getTimeLineManager().addListener(mListener);
-	}
-
-	@Override
-	protected void onPause() {
-		mApplication.getTimeLineManager().removeListener(mListener);
-		super.onPause();
-	}
-	
-	@Override
-	protected void onRestoreInstanceState(Bundle savedInstanceState) {
-		super.onRestoreInstanceState(savedInstanceState);
-		mFirstVisiblePosition = savedInstanceState.getInt("FVP");
-		mFirstChildTop = savedInstanceState.getInt("FCT");
-	}
-
-	@Override
-	protected void onSaveInstanceState(Bundle outState) {
-		super.onSaveInstanceState(outState);
-		outState.putInt("FVP", mListView.getFirstVisiblePosition());
-		if(mListView.getChildCount()>0){
-			outState.putInt("FCT", mListView.getChildAt(0).getTop());
-		}else{
-			outState.putInt("FCT", 0);
+	protected void onTimeLineUpdated(TimeLineManager manager, List<TimeLineItem> tmpList) {
+		SortedSet<TimeLineItem> timeLine = manager.getTimeLine(mLookupUri);
+		for(TimeLineItem item : timeLine){
+			tmpList.add(item);
 		}
-	}
-
-	@Override
-	protected Dialog onCreateDialog(int id) {
-		switch(id){
-		case DIALOG_PROGRESS:
-			ProgressDialog dialog = new ProgressDialog(this);
-			dialog.setCancelable(false);
-			return dialog;
-		}
-		return super.onCreateDialog(id);
-	}
-
-	private boolean mIsUpdating = false;
-	private synchronized void updateTimeLine(final boolean showDialog) {
-		if(mIsUpdating){
-			return;
-		}
-		if(showDialog){
-			showDialog(DIALOG_PROGRESS);
-		}
-		new Thread(new Runnable() {
-			@Override
-			public void run() {
-				SortedSet<TimeLineItem> timeLine = mApplication.getTimeLineManager().getTimeLine(mLookupUri);
-				final List<TimeLineItem> tmpList = new ArrayList<TimeLineItem>();
-				for(TimeLineItem item : timeLine){
-					tmpList.add(item);
-				}
-				runOnUiThread(new Runnable() {				
-					@Override
-					public void run() {
-						mList.clear();
-						mList.addAll(tmpList);
-						mAdapter.notifyDataSetChanged();
-						if(mFirstVisiblePosition > 0 || mFirstChildTop > 0){
-							mListView.setSelectionFromTop(mFirstVisiblePosition, mFirstChildTop);
-						}
-						mFirstVisiblePosition = 0;
-						mFirstChildTop = 0;
-						if(showDialog){
-							try {
-								dismissDialog(DIALOG_PROGRESS);
-							}catch(IllegalArgumentException e){
-							}
-						}
-						mIsUpdating = false;
-					}
-				});
-			}
-		}).start();
 	}
 }
