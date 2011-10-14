@@ -11,12 +11,14 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.os.Bundle;
+import android.provider.ContactsContract;
 import android.text.format.DateUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
+import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.ListView;
@@ -84,6 +86,14 @@ public class ActivityStreamActivity extends AbstractTimeLiveViewActivity<Activit
 				if(intent != null){
 					startActivity(intent);
 				}
+			}
+		});
+		mListView.setOnItemLongClickListener(new OnItemLongClickListener() {
+			@Override
+			public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+				ActivityStreamItem data = mAdapter.getItem(position);
+				ContactsContract.QuickContact.showQuickContact(getApplicationContext(), view, data.getUser().getContactLookupUri(), ContactsContract.QuickContact.MODE_MEDIUM, null);
+				return true;
 			}
 		});
 		setListView(mListView, mAdapter, mList);
