@@ -7,6 +7,7 @@ import android.app.Activity;
 import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 
@@ -22,6 +23,7 @@ public abstract class AbstractTimeLiveViewActivity<T> extends Activity {
 	private ArrayAdapter<T> mAdapter;
 	private int mFirstVisiblePosition = 0;
 	private int mFirstChildTop = 0;
+	private long mLastPauseTime = 0;
 	
 	private final TimeLineManager.Listener mListener = new TimeLineManager.Listener() {
 		@Override
@@ -36,6 +38,7 @@ public abstract class AbstractTimeLiveViewActivity<T> extends Activity {
 		mApplication = (ContactsApplication)getApplication();
 		mFirstVisiblePosition = 0;
 		mFirstChildTop = 0;
+		mLastPauseTime = 0;
 	}
 
 	protected void setListView(ListView view,ArrayAdapter<T> adaptor, List<T> list){
@@ -49,13 +52,17 @@ public abstract class AbstractTimeLiveViewActivity<T> extends Activity {
 	@Override
 	protected void onResume() {
 		super.onResume();
-		updateTimeLine(true);
+		long now = SystemClock.elapsedRealtime();
+		if(now > mLastPauseTime + 15 * 1000){
+			updateTimeLine(true);
+		}
 		mApplication.getTimeLineManager().addListener(mListener);
 	}
 
 	@Override
 	protected void onPause() {
 		mApplication.getTimeLineManager().removeListener(mListener);
+		mLastPauseTime = SystemClock.elapsedRealtime();
 		super.onPause();
 	}
 	

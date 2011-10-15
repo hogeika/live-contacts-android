@@ -58,6 +58,7 @@ public class MainActivity extends TabActivity {
         final String currentTab = tag;
         
 		mApplication = (ContactsApplication)getApplication();
+		showDialog(DIALOG_PROGRESS);
 		mApplication.initializeAsync(new InitializeCallback(){
 			@Override
 			public void onComplete() {
@@ -79,7 +80,12 @@ public class MainActivity extends TabActivity {
 				        tabHost.addTab(spec);
 				        
 			        	tabHost.setCurrentTabByTag(currentTab);
-				        
+
+			        	try{
+			        		dismissDialog(DIALOG_PROGRESS);
+						}catch(IllegalArgumentException e){
+						}
+			        	
 						TimeLineManager timeLineManager = mApplication.getTimeLineManager();
 						if(timeLineManager.getManagerCount()<=1){
 							showDialog(DIALOG_ALERT_INIT);
@@ -99,15 +105,10 @@ public class MainActivity extends TabActivity {
 	@Override
 	protected void onResume() {
 		super.onResume();
-		showDialog(DIALOG_PROGRESS);
 		mApplication.initializeAsync(new InitializeCallback() {
 			@Override
 			public void onComplete() {
 				syncTimeLine(Manager.SYNC_TYPE_LIGHT);
-				try {
-					dismissDialog(DIALOG_PROGRESS);
-				}catch(IllegalArgumentException e){
-				}
 			}
 		});
 	}
