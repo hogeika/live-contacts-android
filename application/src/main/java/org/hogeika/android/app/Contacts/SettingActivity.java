@@ -149,8 +149,7 @@ public class SettingActivity extends PreferenceActivity implements OnPreferenceC
 			list.setSummary(list.getEntries()[list.findIndexOfValue((String)newValue)]);
 		}
 		if(preference.hasKey() && preference.getKey().equals("sync_period")){
-			SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-			int sync_period = Integer.parseInt(prefs.getString("sync_period", "0"));
+			int sync_period = Integer.parseInt((String)newValue);
 			if(sync_period > 0){
 				mTimeLineManager.startTimer(sync_period);
 			} else{
