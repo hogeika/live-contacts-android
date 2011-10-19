@@ -1,6 +1,8 @@
 package org.hogeika.android.app.Contacts;
 
 
+import java.util.List;
+
 import org.hogeika.android.app.Contacts.R;
 import org.hogeika.android.app.Contacts.ContactsApplication.InitializeCallback;
 
@@ -11,6 +13,8 @@ import android.app.TabActivity;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.content.res.Resources;
 import android.net.Uri;
 import android.os.Bundle;
@@ -131,6 +135,14 @@ public class MainActivity extends TabActivity {
 	
 	@Override
 	public boolean onPrepareOptionsMenu(Menu menu) {
+		PackageManager pm = getPackageManager();
+		Intent intent = getAllContactsIntent();
+		List<ResolveInfo> list = pm.queryIntentActivities(intent, 0);
+		if(list.size()>0){
+			menu.findItem(R.id.menuitem_all_contacts).setEnabled(true);
+		}else{
+			menu.findItem(R.id.menuitem_all_contacts).setEnabled(false);
+		}
 		if(mApplication.getTimeLineManager().isSyncing()){
 			menu.findItem(R.id.menuitem_sync).setEnabled(false);
 		}else{
@@ -141,18 +153,33 @@ public class MainActivity extends TabActivity {
 
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
+		Intent intent;
 		switch (item.getItemId()) {
+		case R.id.menuitem_all_contacts:
+			intent = getAllContactsIntent();
+			startActivity(intent);
+			return true;
 		case R.id.menuitem_sync:
 			syncTimeLine(Manager.SYNC_TYPE_HEAVY);
 			return true;
 		case R.id.menuitem_setting:
-			Intent intent = new Intent(this, SettingActivity.class);
+			intent = new Intent(this, SettingActivity.class);
 			startActivity(intent);
 			return true;
 			
 		default:
 			return super.onOptionsItemSelected(item);
 		}
+	}
+
+	private Intent getAllContactsIntent() {
+		Intent intent;
+		intent = new Intent();
+		intent.setAction(Intent.ACTION_MAIN);
+		intent.addCategory(Intent.CATEGORY_LAUNCHER);
+		intent.setClassName("com.android.contacts", "com.android.contacts.DialtactsContactsEntryActivity");
+		intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+		return intent;
 	}
 	
 	@Override
