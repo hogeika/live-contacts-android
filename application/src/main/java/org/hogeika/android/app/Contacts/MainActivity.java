@@ -58,7 +58,6 @@ public class MainActivity extends TabActivity {
         final String currentTab = tag;
         
 		mApplication = (ContactsApplication)getApplication();
-		showDialog(DIALOG_PROGRESS);
 		mApplication.initializeAsync(new InitializeCallback(){
 			@Override
 			public void onComplete() {
@@ -80,11 +79,6 @@ public class MainActivity extends TabActivity {
 				        tabHost.addTab(spec);
 				        
 			        	tabHost.setCurrentTabByTag(currentTab);
-
-			        	try{
-			        		dismissDialog(DIALOG_PROGRESS);
-						}catch(IllegalArgumentException e){
-						}
 			        	
 						TimeLineManager timeLineManager = mApplication.getTimeLineManager();
 						if(timeLineManager.getManagerCount()<=1){
@@ -105,10 +99,19 @@ public class MainActivity extends TabActivity {
 	@Override
 	protected void onResume() {
 		super.onResume();
+		if(!mApplication.isInitialized()){ // Ugh!
+			Log.d(TAG, "showDialog(DIALOG_PROGRESS)");
+			showDialog(DIALOG_PROGRESS);
+		}
 		mApplication.initializeAsync(new InitializeCallback() {
 			@Override
 			public void onComplete() {
 				syncTimeLine(Manager.SYNC_TYPE_LIGHT);
+	        	try{
+	    			Log.d(TAG, "dismissDialog(DIALOG_PROGRESS)");
+	        		removeDialog(DIALOG_PROGRESS);
+				}catch(IllegalArgumentException e){
+				}
 			}
 		});
 	}
@@ -160,6 +163,7 @@ public class MainActivity extends TabActivity {
 			ProgressDialog dialog = new ProgressDialog(this);
 			dialog.setCancelable(false);
 			dialog.setMessage("Loading..");
+			Log.d(TAG, "onCreateDialog(DIALOG_PROGRESS)" + dialog);
 			return dialog;
 			
 		case DIALOG_ALERT_INIT:

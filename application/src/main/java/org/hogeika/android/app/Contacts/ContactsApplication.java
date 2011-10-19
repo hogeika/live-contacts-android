@@ -98,6 +98,10 @@ public class ContactsApplication extends Application {
 		}).start();
 	}
 	
+	public boolean isInitialized(){
+		return mInitializeLatch != null && mInitializeLatch.getCount() == 0;
+	}
+	
 	public TimeLineManager getTimeLineManager(){
 		return mTimeLineManager;
 	}
