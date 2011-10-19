@@ -83,16 +83,18 @@ public class MainActivity extends TabActivity {
 				        tabHost.addTab(spec);
 				        
 			        	tabHost.setCurrentTabByTag(currentTab);
-			        	
-						TimeLineManager timeLineManager = mApplication.getTimeLineManager();
-						if(timeLineManager.getManagerCount()<=1){
-							showDialog(DIALOG_ALERT_INIT);
-							return;
-						}
-						if(timeLineManager.getActiveAccountCount() == 0){
-							showDialog(DIALOG_ALERT_ACCOUNT);
-							return;
-						}
+
+			            if(savedInstanceState == null){ // only first onCreate()
+							TimeLineManager timeLineManager = mApplication.getTimeLineManager();
+							if(timeLineManager.getManagerCount()<=1){
+								showDialog(DIALOG_ALERT_INIT);
+								return;
+							}
+							if(timeLineManager.getActiveAccountCount() == 0){
+								showDialog(DIALOG_ALERT_ACCOUNT);
+								return;
+							}
+			            }
 					}
 				});
 			}
