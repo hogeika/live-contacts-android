@@ -221,6 +221,9 @@ public class TwitterManager implements Manager {
 
 	@Override
 	public void logout(Activity activity, Account account) {
+		Intent intent = new Intent(activity, TwitterLogoutActivity.class);
+		activity.startActivity(intent);
+		
 		mTwitterMap.remove(account.name);
 		
 		SharedPreferences pref = activity.getSharedPreferences(PREF, Activity.MODE_PRIVATE);
