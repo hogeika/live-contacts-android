@@ -1,6 +1,5 @@
 package org.hogeika.android.app.Contacts;
 
-import org.hogeika.android.app.Contacts.R;
 import org.hogeika.android.app.Contacts.TimeLineManager.ClearListener;
 import org.hogeika.android.app.Contacts.TimeLineManager.PurgeListenr;
 import org.hogeika.android.app.Contacts.TimeLineManager.ReloadListener;
@@ -9,7 +8,6 @@ import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.preference.EditTextPreference;
@@ -18,7 +16,6 @@ import android.preference.Preference;
 import android.preference.Preference.OnPreferenceChangeListener;
 import android.preference.Preference.OnPreferenceClickListener;
 import android.preference.PreferenceActivity;
-import android.preference.PreferenceManager;
 import android.preference.PreferenceScreen;
 
 public class SettingActivity extends PreferenceActivity implements OnPreferenceChangeListener {
