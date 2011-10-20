@@ -351,9 +351,15 @@ public class TwitterManager implements Manager {
 				long sender = status.getUser().getId();
 				long date = status.getCreatedAt().getTime();
 				String body = status.getText();
-				Log.d("FlowActivity", "Tweet <<:" + body);
+				String sourceType = "tweet";
+				if(status.isRetweet()){
+					sourceType = "RT";
+					Log.d("FlowActivity", "Tweet(RT) :" + body);
+				}else{
+					Log.d("FlowActivity", "Tweet :" + body);
+				}
 				if(userMap.containsKey(sender)){
-					mTimeLineManager.addActivityStreamItem(this, date, userMap.get(sender), account, "tweet", id, body, null);
+					mTimeLineManager.addActivityStreamItem(this, date, userMap.get(sender), account, sourceType, id, body, null);
 				}
 			}
 		} catch (TwitterException e) {
@@ -418,6 +424,9 @@ public class TwitterManager implements Manager {
 	public String getActionText(String sourceType) {
 		if(sourceType.equals("tweet")){
 			return "つぶやき";
+		}
+		if(sourceType.equals("RT")){
+			return "リツイート";
 		}
 		return null;
 	}
