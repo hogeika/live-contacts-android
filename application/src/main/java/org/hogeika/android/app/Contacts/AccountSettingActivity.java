@@ -106,7 +106,10 @@ public class AccountSettingActivity extends Activity {
 		super.onPause();
 //		AccountManager am = AccountManager.get(this);
 //		am.removeOnAccountsUpdatedListener(mListener);
-		dismissDialog(DIALOG_PROGRESS);
+		try{
+			dismissDialog(DIALOG_PROGRESS);
+		}catch(IllegalArgumentException e){
+		}
 	}
 
 	@Override
