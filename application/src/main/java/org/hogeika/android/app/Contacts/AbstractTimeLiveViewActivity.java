@@ -6,6 +6,8 @@ import java.util.List;
 import android.app.Activity;
 import android.app.Dialog;
 import android.app.ProgressDialog;
+import android.content.DialogInterface;
+import android.content.DialogInterface.OnCancelListener;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.widget.ArrayAdapter;
@@ -89,7 +91,13 @@ public abstract class AbstractTimeLiveViewActivity<T> extends Activity {
 		switch(id){
 		case DIALOG_PROGRESS:
 			ProgressDialog dialog = new ProgressDialog(this);
-			dialog.setCancelable(false);
+			dialog.setCancelable(true);
+			dialog.setOnCancelListener(new OnCancelListener() {
+				@Override
+				public void onCancel(DialogInterface dialog) {
+					finish();
+				}
+			});
 			return dialog;
 		}
 		return super.onCreateDialog(id);
