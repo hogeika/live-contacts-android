@@ -17,29 +17,30 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
 	android:layout_width="fill_parent" android:layout_height="fill_parent"
 	android:padding="6dip">
-	<ImageView android:layout_width="64dip"
-		android:layout_height="64dip" android:layout_alignParentTop="true"
+	<QuickContactBadge
+		style="?android:attr/quickContactBadgeStyleWindowMedium"
+		android:layout_alignParentTop="true"
 		android:layout_marginRight="6dip"
-		android:id="@+id/ImageView_contactIcon" android:scaleType="centerInside" />
-	<TextView android:layout_toRightOf="@+id/ImageView_contactIcon"
+		android:id="@+id/QuickContactBadge_contactIcon" android:scaleType="centerInside" />
+	<TextView android:layout_toRightOf="@+id/QuickContactBadge_contactIcon"
 		android:layout_alignWithParentIfMissing="true" android:layout_width="fill_parent"
 		android:layout_height="wrap_content" android:gravity="center_vertical"
 		android:id="@+id/TextView_contactName" android:textStyle="bold"
 		android:textSize="20dip" android:singleLine="true" android:ellipsize="end"></TextView>
 	<ImageView android:src="@android:drawable/sym_action_call"
 		android:layout_marginRight="6dip"
-		android:layout_toRightOf="@+id/ImageView_contactIcon" android:id="@+id/ImageView_typeIcon"
-		android:layout_height="26dip" android:layout_width="26dip" android:layout_alignBottom="@+id/ImageView_contactIcon"></ImageView>
+		android:layout_toRightOf="@+id/QuickContactBadge_contactIcon" android:id="@+id/ImageView_typeIcon"
+		android:layout_height="26dip" android:layout_width="26dip" android:layout_alignBottom="@+id/QuickContactBadge_contactIcon"></ImageView>
 	<TextView android:layout_width="fill_parent"
 		android:layout_height="26dip" android:layout_toRightOf="@+id/TextView_timeStamp"
 		android:singleLine="true"
-		android:layout_marginLeft="6dip" android:ellipsize="end" android:id="@+id/TextView_action"  android:layout_alignBottom="@+id/ImageView_contactIcon"/>
+		android:layout_marginLeft="6dip" android:ellipsize="end" android:id="@+id/TextView_action"  android:layout_alignBottom="@+id/QuickContactBadge_contactIcon"/>
 	<TextView android:layout_width="wrap_content"
 		android:layout_height="26dip" 
 		android:layout_toRightOf="@+id/ImageView_typeIcon"
 		android:singleLine="true"
-		android:id="@+id/TextView_timeStamp"  android:layout_alignBottom="@+id/ImageView_contactIcon"/>
+		android:id="@+id/TextView_timeStamp"  android:layout_alignBottom="@+id/QuickContactBadge_contactIcon"/>
 	<TextView android:text="TextView" android:layout_height="wrap_content"
-		android:layout_width="fill_parent" android:layout_below="@+id/ImageView_contactIcon"
+		android:layout_width="fill_parent" android:layout_below="@+id/QuickContactBadge_contactIcon"
 		android:layout_alignParentBottom="true" android:id="@+id/TextView_body"></TextView>		
 </RelativeLayout>

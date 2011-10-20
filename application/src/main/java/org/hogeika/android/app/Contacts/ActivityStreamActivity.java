@@ -12,6 +12,7 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.provider.ContactsContract;
+import android.provider.ContactsContract.QuickContact;
 import android.text.format.DateUtils;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -22,6 +23,7 @@ import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.ListView;
+import android.widget.QuickContactBadge;
 import android.widget.TextView;
 
 public class ActivityStreamActivity extends AbstractTimeLiveViewActivity<ActivityStreamItem> {
@@ -40,7 +42,7 @@ public class ActivityStreamActivity extends AbstractTimeLiveViewActivity<Activit
 			}
 			TextView contactName = (TextView) convertView.findViewById(R.id.TextView_contactName);
 			TextView body = (TextView) convertView.findViewById(R.id.TextView_body);
-			ImageView contactIcon = (ImageView) convertView.findViewById(R.id.ImageView_contactIcon);
+			QuickContactBadge contactIcon = (QuickContactBadge) convertView.findViewById(R.id.QuickContactBadge_contactIcon);
 			ImageView typeIcon = (ImageView) convertView.findViewById(R.id.ImageView_typeIcon);
 			TextView timestamp = (TextView) convertView.findViewById(R.id.TextView_timeStamp);
 			TextView action = (TextView) convertView.findViewById(R.id.TextView_action);
@@ -55,6 +57,8 @@ public class ActivityStreamActivity extends AbstractTimeLiveViewActivity<Activit
 			}else{
 				contactIcon.setImageResource(R.drawable.ic_contact_picture);
 			}
+			contactIcon.assignContactUri(data.getUser().getContactLookupUri());
+			contactIcon.setMode(QuickContact.MODE_MEDIUM);
 			typeIcon.setImageDrawable(data.getIconDrawable());
 			timestamp.setText(DateUtils.formatSameDayTime(data.getTimeStamp(), System.currentTimeMillis(), DateFormat.SHORT, DateFormat.SHORT));
 			String actionText = data.getActionText();

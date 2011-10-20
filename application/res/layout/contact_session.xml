@@ -6,7 +6,7 @@
   android:layout_height="fill_parent" android:id="@+id/LinearLayout1">
     <ListView android:id="@+id/ListView_contactSession" android:layout_width="fill_parent" android:layout_height="wrap_content" android:layout_weight="1"></ListView>
     <LinearLayout android:layout_width="fill_parent" android:id="@+id/linearLayout2" android:layout_height="wrap_content" android:layout_gravity="bottom">
-        <QuickContactBadge android:id="@+id/QuickContactBadge_contact" android:layout_width="64dip" android:layout_height="64dip" android:src="@drawable/ic_contact_picture"></QuickContactBadge>
+        <QuickContactBadge android:id="@+id/QuickContactBadge_contact" android:src="@drawable/ic_contact_picture" style="?android:attr/quickContactBadgeStyleWindowMedium" android:layout_marginLeft="10dip" android:layout_marginBottom="5dip" android:layout_marginRight="5dip" android:layout_marginTop="5dip"></QuickContactBadge>
         <TextView android:textAppearance="?android:attr/textAppearanceLarge" android:layout_height="wrap_content" android:text="TextView" android:id="@+id/TextView_contactName" android:layout_width="fill_parent"></TextView>
     </LinearLayout>
     

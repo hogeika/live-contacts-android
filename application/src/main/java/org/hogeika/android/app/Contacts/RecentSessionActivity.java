@@ -16,6 +16,7 @@ import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.ContactsContract;
+import android.provider.ContactsContract.QuickContact;
 import android.text.format.DateUtils;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -26,6 +27,7 @@ import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.ListView;
+import android.widget.QuickContactBadge;
 import android.widget.TextView;
 
 interface ContactData {
@@ -98,7 +100,7 @@ public class RecentSessionActivity extends AbstractTimeLiveViewActivity<ContactD
 			}
 			TextView contactName = (TextView) convertView.findViewById(R.id.TextView_contactName);
 			TextView body = (TextView) convertView.findViewById(R.id.TextView_body);
-			ImageView contactIcon = (ImageView) convertView.findViewById(R.id.ImageView_contactIcon);
+			QuickContactBadge contactIcon = (QuickContactBadge) convertView.findViewById(R.id.QuickContactBadge_contactIcon);
 			ImageView typeIcon = (ImageView) convertView.findViewById(R.id.ImageView_typeIcon);
 			ImageView directionIcon = (ImageView) convertView.findViewById(R.id.ImageView_directionIcon);
 			TextView timestamp = (TextView) convertView.findViewById(R.id.TextView_timeStamp);
@@ -113,6 +115,8 @@ public class RecentSessionActivity extends AbstractTimeLiveViewActivity<ContactD
 			}else{
 				contactIcon.setImageResource(R.drawable.ic_contact_picture);
 			}
+			contactIcon.assignContactUri(data.getContactLookupUri());
+			contactIcon.setMode(QuickContact.MODE_MEDIUM);
 			typeIcon.setImageDrawable(data.getTypeIcon());
 			switch(data.getDirection()){
 			case TimeLineItem.DIRECTION_INCOMING:
