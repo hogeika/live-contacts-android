@@ -5,6 +5,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import org.hogeika.android.app.Contacts.plugin.gmail.GMailManager;
 import org.hogeika.android.app.Contacts.plugin.local.LocalContactManager;
 import org.hogeika.android.app.Contacts.plugin.mixi.MixiManager;
 import org.hogeika.android.app.Contacts.plugin.twitter.TwitterManager;
@@ -21,12 +22,14 @@ public class ContactsApplication extends Application {
 	public static final int REQUEST_LOGIN_MIXI = 1;
 	public static final int REQUEST_LOGOUT_MIXI = 2;
 	public static final int REQUEST_LOGIN_TWITTER = 3;
+	public static final int REQUEST_LOGIN_GMAIL = 4;
 
 	
 	private TimeLineManager mTimeLineManager = null;
 	/*package*/ LocalContactManager mLocalContactManager = null;
 	private TwitterManager mTwitterManager = null;
 	private MixiManager mMixiManager = null;
+	private GMailManager mGMailManager = null;
 	
 	private ExecutorService mExecutor;
 	
@@ -81,9 +84,13 @@ public class ContactsApplication extends Application {
 				mMixiManager = new MixiManager(ContactsApplication.this, mTimeLineManager);
 				mMixiManager.setRequestCode(REQUEST_LOGIN_MIXI, REQUEST_LOGOUT_MIXI);
 				
+				mGMailManager = new GMailManager(ContactsApplication.this, mTimeLineManager);
+				mGMailManager.setRequestCode(REQUEST_LOGIN_GMAIL);
+				
 				mLocalContactManager.init(ContactsApplication.this);
 				mMixiManager.init(ContactsApplication.this);
 				mTwitterManager.init(ContactsApplication.this);
+				mGMailManager.init(ContactsApplication.this);
 				
 				SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ContactsApplication.this);
 				int sync_period = Integer.parseInt(prefs.getString("sync_period", "0"));
@@ -113,6 +120,9 @@ public class ContactsApplication extends Application {
 		if(requestCode == REQUEST_LOGIN_MIXI || requestCode == REQUEST_LOGOUT_MIXI){
 			mMixiManager.authorizeCallback(requestCode, resultCode, data);
 		}
+		if(requestCode == REQUEST_LOGIN_GMAIL){
+			mGMailManager.authorizeCallback(requestCode, resultCode, data);
+		}
 	}
 	
 	public boolean checkAccount(Account account) {
@@ -122,14 +132,14 @@ public class ContactsApplication extends Application {
 	}
 	
 	private Manager getManager(String accountType){
-		if("com.google".equals(accountType)){
-			return mLocalContactManager;
-		}
 		if("com.twitter.android.auth.login".equals(accountType)){
 			return mTwitterManager;
 		}
 		if("jp.mixi.authenticator.MixiAccountType".equals(accountType)){
 			return mMixiManager;
+		}
+		if("com.google".equals(accountType)){
+			return mGMailManager;
 		}
 		return null;
 	}

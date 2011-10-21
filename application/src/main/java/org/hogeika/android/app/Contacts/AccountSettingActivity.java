@@ -34,7 +34,7 @@ public class AccountSettingActivity extends Activity {
 	private static final int DIALOG_PROGRESS = 4;
 	
 	private static final String[] KNOWN_ACCOUNT_TYPES = {
-		/*"com.google",*/
+		"com.google",
 		/*"com.facebook.auth.login",*/
 		"com.twitter.android.auth.login",
 		"jp.mixi.authenticator.MixiAccountType",
