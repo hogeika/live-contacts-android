@@ -231,6 +231,10 @@ public class TimeLineManager {
 					do {
 						long rawContactId = timeline.getLong(rawContactIdColumn);
 						TimeLineUser user = newTimeLineUser(rawContactId);
+						if(user == null){
+							// TODO
+							continue;
+						}
 						users.add(user);
 					}while(timeline.moveToNext());
 					TimeLineItemImpl item = new TimeLineItemImpl(source, timeStamp, users, sourceAccount, sourceType, originalId, direction, title, summary);
@@ -262,6 +266,10 @@ public class TimeLineManager {
 				String url = activity.getString(urlColumn);
 				
 				TimeLineUser user = newTimeLineUser(rawContactId);
+				if(user == null){
+					// TODO
+					continue;
+				}
 				ActivityStreamItemImpl item = new ActivityStreamItemImpl(source, timeStamp, user, sourceAccount, sourceType, originalId, summary, url);
 				internalAddActivityStreamItem(item);
 			}while(activity.moveToNext());
@@ -965,8 +973,13 @@ public class TimeLineManager {
 		}
 		Uri rawContactUri = ContentUris.withAppendedId(RawContacts.CONTENT_URI, rawContactId);
 		Uri contactLookupUri = RawContacts.getContactLookupUri(mContentRsolver, rawContactUri);
+		if(contactLookupUri == null){
+			return null;
+		}
 		Cursor c = mContentRsolver.query(contactLookupUri, new String[]{Contacts.LOOKUP_KEY}, null, null, null);
-		c.moveToFirst();
+		if(!c.moveToFirst()){
+			return null;
+		}
 		String lookupKey = c.getString(0);
 		c.close();
 		if(mLookupUriCache.containsKey(lookupKey)){
