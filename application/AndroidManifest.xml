@@ -47,8 +47,9 @@
     <receiver android:name=".AlarmReceiver">
     </receiver>
     <activity android:name="SettingActivity"></activity>
+    <activity android:name=".plugin.gmail.GMailLoginActivity" android:theme="@android:style/Theme.Dialog"></activity>
+    <activity android:name=".plugin.gmail.GMailLogoutActivity" android:theme="@android:style/Theme.Dialog"></activity>
     
-     
   </application>
 
 </manifest>
