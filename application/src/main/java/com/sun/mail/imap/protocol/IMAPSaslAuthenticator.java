@@ -47,7 +47,6 @@ import javax.security.auth.callback.*;
 
 import org.hogeika.android.app.Contacts.plugin.gmail.NameCallback;
 import org.hogeika.android.app.Contacts.plugin.gmail.SaslClient;
-import org.hogeika.android.app.Contacts.plugin.gmail.XoauthSaslClient;
 import org.hogeika.android.app.Contacts.plugin.gmail.XoauthSaslClientFactory;
 
 import com.sun.mail.iap.*;
