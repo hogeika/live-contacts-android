@@ -8,6 +8,7 @@ import java.util.SortedSet;
 
 import org.apache.commons.lang.StringUtils;
 import org.hogeika.android.app.Contacts.TimeLineManager.TimeLineItem;
+import org.hogeika.android.app.Contacts.TimeLineManager.TimeLineUser;
 
 import android.app.AlertDialog;
 import android.content.Context;
@@ -110,7 +111,14 @@ public class ContactSessionActivity extends AbstractTimeLiveViewActivity<TimeLin
 			public void onItemClick(AdapterView<?> parent, View view,
 					int position, long id) {
 				TimeLineItem data = mAdapter.getItem(position);
-				Intent intent = data.getIntent();
+				TimeLineUser targetUser = null;
+				for(TimeLineUser tmp : data.getUsers()){
+					if(tmp.getContactLookupUri().equals(mLookupUri)){
+						targetUser = tmp;
+						break;
+					}
+				}
+				Intent intent = data.getIntent(targetUser);
 				if(intent != null){
 					startActivity(intent);
 				}else{

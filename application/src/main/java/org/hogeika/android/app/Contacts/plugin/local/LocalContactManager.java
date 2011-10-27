@@ -242,10 +242,6 @@ public class LocalContactManager implements Manager {
 
 	@Override
 	public Intent getIntent(long rawContactId, String sourceAccount, String sourceType, String originalId) {
-		return getIntent(sourceAccount, sourceType, originalId);
-	}
-	@Override
-	public Intent getIntent(String sourceAccount, String sourceType, String originalId) {
 		String tmp[] = originalId.split("/", 4);
 		String from = tmp[2];
 		String to = tmp[3];

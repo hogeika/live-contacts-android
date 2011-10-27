@@ -30,8 +30,6 @@ public interface Manager {
 	
 	public Intent getIntent(long rawContactId, String sourceAccount, String sourceType, String originalId);
 
-	public Intent getIntent(String sourceAccount, String sourceType, String originalId);
-
 	public String getActionText(String sourceType);
 
 	public int getActiveAccountCount();

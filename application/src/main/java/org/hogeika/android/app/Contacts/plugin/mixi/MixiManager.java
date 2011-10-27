@@ -762,11 +762,6 @@ public class MixiManager implements Manager {
 
 	@Override
 	public Intent getIntent(long rawContactId, String sourceAccount, String sourceType, String originalId) {
-		return getIntent(sourceAccount, sourceType, originalId);
-	}
-
-	@Override
-	public Intent getIntent(String sourceAccount, String sourceType, String originalId) {
 		if(sourceType.equals(SOURCE_TYPE_VOICE)){
 			String tmp[] = originalId.split("-",2);
 			String user_id = tmp[0];

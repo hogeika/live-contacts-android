@@ -323,7 +323,6 @@ public class TimeLineManager {
 
 		public long getTimeStamp();
 		public Intent getIntent(TimeLineUser user);
-		public Intent getIntent();
 		public Drawable getIconDrawable();
 		public Manager getSource();
 		public Set<TimeLineUser> getUsers();
@@ -501,12 +500,7 @@ public class TimeLineManager {
 		
 		@Override
 		public Intent getIntent(TimeLineUser user){
-			return getIntent();
-		}
-
-		@Override
-		public Intent getIntent(){
-			Intent intent = getSource().getIntent(mSourceAccount, mSourceType, mOriginalId);
+			Intent intent = getSource().getIntent(user.getRawContactId(), mSourceAccount, mSourceType, mOriginalId);
 			return intent;
 		}
 
@@ -605,7 +599,7 @@ public class TimeLineManager {
 				Intent intent = new Intent(Intent.ACTION_VIEW,uri);
 				return intent;
 			}
-			Intent intent = getSource().getIntent(mSourceAccount, mSourceType, mOriginalId);
+			Intent intent = getSource().getIntent(mUser.getRawContactId(), mSourceAccount, mSourceType, mOriginalId);
 			return intent;
 		}
 
