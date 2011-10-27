@@ -24,6 +24,7 @@ import org.hogeika.android.app.Contacts.TimeLineManager.TimeLineItem;
 import android.accounts.Account;
 import android.accounts.AccountManager;
 import android.app.Activity;
+import android.app.SearchManager;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.ContextWrapper;
@@ -350,8 +351,12 @@ public class GMailManager implements Manager {
 
 	@Override
 	public Intent getIntent(long rawContactId, String sourceAccount, String sourceType, String originalId) {
-		// TODO Auto-generated method stub
-		return null;
+		Intent intent = new Intent();
+		intent.setAction(Intent.ACTION_SEARCH);
+		intent.setClassName("com.google.android.gm", "com.google.android.gm.ConversationListActivity");
+		intent.putExtra(SearchManager.QUERY, "rfc822msgid:" + originalId);
+		intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+		return intent;
 	}
 
 	@Override
