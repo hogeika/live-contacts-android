@@ -587,9 +587,9 @@ public class MixiManager implements Manager {
 						String user = comment.getJSONObject("user").getString("id");
 						Log.d(TAG, "comment_id = " + comment_id + " created_at = " + date + " user = " + user + " text = " + text);
 						if(userMap.containsKey(user)){
-							mTimeLineManager.addTimeLineItem(MixiManager.this, date, userMap.get(user), "dummy" , SOURCE_TYPE_VOICE_COMMENT, comment_id, TimeLineItem.DIRECTION_INCOMING, "", text);
+							mTimeLineManager.addTimeLineItem(MixiManager.this, date, userMap.get(user), "dummy" , SOURCE_TYPE_VOICE_COMMENT, comment_id, TimeLineItem.DIRECTION_INCOMING, "コメント", text);
 						}else if(user.equals(mMeID)){
-							mTimeLineManager.addTimeLineItem(MixiManager.this, date, users, "dummy" , SOURCE_TYPE_VOICE_COMMENT, comment_id, TimeLineItem.DIRECTION_OUTGOING, "", text);
+							mTimeLineManager.addTimeLineItem(MixiManager.this, date, users, "dummy" , SOURCE_TYPE_VOICE_COMMENT, comment_id, TimeLineItem.DIRECTION_OUTGOING, "コメント", text);
 						}
 					}
 				} catch (JSONException e) {
@@ -676,7 +676,7 @@ public class MixiManager implements Manager {
 							String text = comment.getString("text");
 							long date = VOICE_DATE_FORMAT.parse(comment.getString("created_at")).getTime();
 							Log.d(TAG, "comment_id = " + comment_id + " created_at = " + date + " user = " + user + " text = " + text);
-							mTimeLineManager.addTimeLineItem(MixiManager.this, date, friend_raw_id, "dummy" , SOURCE_TYPE_VOICE_COMMENT, comment_id, TimeLineItem.DIRECTION_OUTGOING, "", text);
+							mTimeLineManager.addTimeLineItem(MixiManager.this, date, friend_raw_id, "dummy" , SOURCE_TYPE_VOICE_COMMENT, comment_id, TimeLineItem.DIRECTION_OUTGOING, "コメント", text);
 						}
 					}
 //					if(flag){

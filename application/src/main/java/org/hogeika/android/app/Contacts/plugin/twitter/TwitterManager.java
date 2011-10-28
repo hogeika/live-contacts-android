@@ -265,7 +265,7 @@ public class TwitterManager implements Manager {
 				String userName = dm.getSenderScreenName();
 				Log.d("FlowActivity", "DM incoming :" + body);
 				if(userMap.containsKey(sender)){
-					mTimeLineManager.addTimeLineItem(this, date, userMap.get(sender), account, "direct_meesages", id + "-" + userName + "-" + sender, TimeLineItem.DIRECTION_INCOMING, "", body);
+					mTimeLineManager.addTimeLineItem(this, date, userMap.get(sender), account, "direct_meesages", id + "-" + userName + "-" + sender, TimeLineItem.DIRECTION_INCOMING, "DM", body);
 				}
 			}
 			list = twitter.getSentDirectMessages();
@@ -277,7 +277,7 @@ public class TwitterManager implements Manager {
 				String userName = dm.getRecipientScreenName();
 				Log.d("FlowActivity", "DM outgoing:" + body);
 				if(userMap.containsKey(recipient)){
-					mTimeLineManager.addTimeLineItem(this, date, userMap.get(recipient), account, "direct_meesages/sent", id + "-" + userName + "-" + recipient, TimeLineItem.DIRECTION_OUTGOING, "", body);
+					mTimeLineManager.addTimeLineItem(this, date, userMap.get(recipient), account, "direct_meesages/sent", id + "-" + userName + "-" + recipient, TimeLineItem.DIRECTION_OUTGOING, "DM", body);
 				}
 			}
 		}catch(TwitterException e){
@@ -288,6 +288,7 @@ public class TwitterManager implements Manager {
 	private void syncMentions(Twitter twitter, final Map<Long, Long> userMap) {
 		
 		try {
+			String accountName = twitter.getScreenName();
 			String account = Long.toString(twitter.getId());
 			ResponseList<Status> list = twitter.getMentions();
 			for(Status status : list){
@@ -298,7 +299,7 @@ public class TwitterManager implements Manager {
 				String summary = body.replaceFirst("^(@\\S+\\s)*", "");
 				Log.d("FlowActivity", "Tweet <<:" + body);
 				if(userMap.containsKey(sender)){
-					mTimeLineManager.addTimeLineItem(this, date, userMap.get(sender), account, "statuses/mentions", id, TimeLineItem.DIRECTION_INCOMING, "", summary);
+					mTimeLineManager.addTimeLineItem(this, date, userMap.get(sender), account, "statuses/mentions", id, TimeLineItem.DIRECTION_INCOMING, "@" + accountName, summary);
 				}
 			}
 			list = twitter.getUserTimeline();
@@ -310,14 +311,16 @@ public class TwitterManager implements Manager {
 				String summary = body.replaceFirst("^(@\\S+\\s)*", "");
 				Log.d("FlowActivity", "Tweet >>:" + body);
 				Set<Long> users = new HashSet<Long>();
+				String mention = "";
 				for(UserMentionEntity user : menters){
 					long recpient = user.getId();
 					if(userMap.containsKey(recpient)){
 						users.add(userMap.get(recpient));
+						mention = mention + "@" + user.getScreenName() + " ";
 					}
 				}
 				if(users.size()>0){
-					mTimeLineManager.addTimeLineItem(this, date, users, account, "statuses/mentions/sent", id, TimeLineItem.DIRECTION_OUTGOING, "", summary);
+					mTimeLineManager.addTimeLineItem(this, date, users, account, "statuses/mentions/sent", id, TimeLineItem.DIRECTION_OUTGOING, mention, summary);
 				}
 			}
 		} catch (TwitterException e) {
