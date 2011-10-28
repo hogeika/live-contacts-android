@@ -26,8 +26,7 @@
     </activity>
     <activity android:name="RecentSessionActivity"></activity>
     <activity android:name=".ActivityStreamActivity"></activity>
-    <activity android:name=".plugin.twitter.TwitterLoginActivity" android:theme="@android:style/Theme.Dialog"></activity>
-    <activity android:name=".plugin.twitter.TwitterLogoutActivity" android:theme="@android:style/Theme.Dialog"></activity><activity android:name="AccountSettingActivity"></activity>
+    <activity android:name=".plugin.twitter.TwitterLoginActivity" android:theme="@android:style/Theme.Dialog"></activity><activity android:name="AccountSettingActivity"></activity>
     <activity android:name="ContactSessionActivity"></activity>
     <receiver android:name=".plugin.local.PhoneStateReceiver">
         <intent-filter>
@@ -48,7 +47,6 @@
     </receiver>
     <activity android:name="SettingActivity"></activity>
     <activity android:name=".plugin.gmail.GMailLoginActivity" android:theme="@android:style/Theme.Dialog"></activity>
-    <activity android:name=".plugin.gmail.GMailLogoutActivity" android:theme="@android:style/Theme.Dialog"></activity>
     
   </application>
 

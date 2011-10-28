@@ -20,16 +20,20 @@ import org.apache.commons.lang.StringUtils;
 import org.hogeika.android.app.Contacts.Manager;
 import org.hogeika.android.app.Contacts.TimeLineManager;
 import org.hogeika.android.app.Contacts.TimeLineManager.TimeLineItem;
+import org.hogeika.android.app.Contacts.plugin.twitter.TwitterLoginActivity;
 
 import android.accounts.Account;
 import android.accounts.AccountManager;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.SearchManager;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.ContextWrapper;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.DialogInterface.OnClickListener;
 import android.content.SharedPreferences.Editor;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
@@ -89,7 +93,7 @@ public class GMailManager implements Manager {
 	private final ContentResolver mContentResolver;
 	private Drawable mIcon = null;
 	private final TimeLineManager mTimeLineManager;
-	private int mRequestCode = 1;
+	private int mRequestCodeLogin = 1;
 	private Map<String, AccountInfo> mAuthMap = new HashMap<String, AccountInfo>();
 	
 	public GMailManager(Context context, TimeLineManager manager) {
@@ -111,7 +115,7 @@ public class GMailManager implements Manager {
 	}
 
 	public void setRequestCode(int code) {
-		mRequestCode = code;
+		mRequestCodeLogin = code;
 	}
 
 
@@ -166,8 +170,20 @@ public class GMailManager implements Manager {
 
 	@Override
 	public void authorizeCallback(int requestCode, int resultCode, Intent data) {
-		if(requestCode == mRequestCode){
-			refreshAccountInfo();
+		if(requestCode == mRequestCodeLogin && resultCode == Activity.RESULT_OK){
+			String accountName = data.getStringExtra(TwitterLoginActivity.RESULT_ACCOUNT_NAME);
+			String oauthToken = data.getStringExtra(TwitterLoginActivity.RESULT_OAUTH_TOKEN);
+			String oauthTokenSecret = data.getStringExtra(TwitterLoginActivity.RESULT_OAUTH_TOKEN_SECRET);
+
+			if(oauthToken.length()>0 && oauthTokenSecret.length()>0){
+					SharedPreferences pref = mContext.getSharedPreferences(PREF, Activity.MODE_PRIVATE);
+				Editor editor = pref.edit();
+				editor.putString(PREF_GMAIL_OAUTH_TOKEN + "." + accountName, oauthToken);
+				editor.putString(PREF_GMAIL_OAUTH_TOKEN_SECRET + "." + accountName, oauthTokenSecret);
+				editor.commit();
+
+				refreshAccountInfo();
+			}
 		}
 	}
 
@@ -181,14 +197,30 @@ public class GMailManager implements Manager {
 	public void login(Activity activity, Account account) {
 		Intent intent = new Intent(activity, GMailLoginActivity.class);
 		intent.putExtra(GMailLoginActivity.EXTRA_ACCOUNT_NAME, account.name);
-		activity.startActivityForResult(intent, mRequestCode);
+		activity.startActivityForResult(intent, mRequestCodeLogin);
 	}
 
 	@Override
 	public void logout(Activity activity, Account account) {
-		Intent intent = new Intent(activity, GMailLogoutActivity.class);
-		intent.putExtra(GMailLogoutActivity.EXTRA_ACCOUNT_NAME, account.name);
-		activity.startActivityForResult(intent, mRequestCode);
+		final String accountName = account.name;
+		AlertDialog.Builder builder = new AlertDialog.Builder(activity);
+		builder.setMessage(accountName);
+		builder.setPositiveButton("Logout", new OnClickListener() {		
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				SharedPreferences pref = mContext.getSharedPreferences(PREF, Activity.MODE_PRIVATE);
+				Editor editor = pref.edit();
+				editor.remove(PREF_GMAIL_OAUTH_TOKEN + "." + accountName);
+				editor.remove(PREF_GMAIL_OAUTH_TOKEN_SECRET + "." + accountName);
+				editor.commit();
+				
+				refreshAccountInfo();
+			}
+		});
+		builder.setNegativeButton("Cancel", null);
+		AlertDialog dialog = builder.create();
+		dialog.setOwnerActivity(activity);
+		dialog.show();
 	}
 
 	@Override

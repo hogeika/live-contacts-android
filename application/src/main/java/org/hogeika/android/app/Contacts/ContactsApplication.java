@@ -22,7 +22,9 @@ public class ContactsApplication extends Application {
 	public static final int REQUEST_LOGIN_MIXI = 1;
 	public static final int REQUEST_LOGOUT_MIXI = 2;
 	public static final int REQUEST_LOGIN_TWITTER = 3;
-	public static final int REQUEST_LOGIN_GMAIL = 4;
+	public static final int REQUEST_LOGOUT_TWITTER = 4; // Don't use
+	public static final int REQUEST_LOGIN_GMAIL = 5;
+	public static final int REQUEST_LOGOUT_GMAIL = 6; // Don't use
 
 	
 	private TimeLineManager mTimeLineManager = null;
@@ -114,13 +116,13 @@ public class ContactsApplication extends Application {
 	}
 	
 	public void authorizeCallback(int requestCode, int resultCode, Intent data) {
-		if(requestCode == REQUEST_LOGIN_TWITTER){
+		if(requestCode == REQUEST_LOGIN_TWITTER || requestCode == REQUEST_LOGOUT_TWITTER){
 			mTwitterManager.authorizeCallback(requestCode, resultCode, data);
 		}
 		if(requestCode == REQUEST_LOGIN_MIXI || requestCode == REQUEST_LOGOUT_MIXI){
 			mMixiManager.authorizeCallback(requestCode, resultCode, data);
 		}
-		if(requestCode == REQUEST_LOGIN_GMAIL){
+		if(requestCode == REQUEST_LOGIN_GMAIL || requestCode == REQUEST_LOGOUT_GMAIL){
 			mGMailManager.authorizeCallback(requestCode, resultCode, data);
 		}
 	}

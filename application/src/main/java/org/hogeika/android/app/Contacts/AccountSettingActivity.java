@@ -4,21 +4,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.lang.ArrayUtils;
-import org.hogeika.android.app.Contacts.R;
 
 import android.accounts.Account;
 import android.accounts.AccountManager;
 import android.accounts.AuthenticatorDescription;
 import android.accounts.OnAccountsUpdateListener;
 import android.app.Activity;
-import android.app.Dialog;
-import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
-import android.os.Handler;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -31,7 +27,6 @@ import android.widget.ListView;
 import android.widget.TextView;
 
 public class AccountSettingActivity extends Activity {
-	private static final int DIALOG_PROGRESS = 4;
 	
 	private static final String[] KNOWN_ACCOUNT_TYPES = {
 		"com.google",
@@ -60,18 +55,12 @@ public class AccountSettingActivity extends Activity {
 		listView.setOnItemClickListener(new OnItemClickListener() {
 			@Override
 			public void onItemClick(AdapterView<?> parent, View view, final int position, long id) {
-				showDialog(DIALOG_PROGRESS);
-				new Handler().postDelayed(new Runnable() {
-					@Override
-					public void run() {
-						AccountData selected = mAccounts.get(position);
-						if(selected.isActive()){
-							mApplication.logout(AccountSettingActivity.this, selected.getAccount());
-						}else{
-							mApplication.login(AccountSettingActivity.this, selected.getAccount());
-						}
-					}
-				}, 100);
+				AccountData selected = mAccounts.get(position);
+				if(selected.isActive()){
+					mApplication.logout(AccountSettingActivity.this, selected.getAccount());
+				}else{
+					mApplication.login(AccountSettingActivity.this, selected.getAccount());
+				}
 			}
 		});
 		
@@ -92,37 +81,6 @@ public class AccountSettingActivity extends Activity {
 		};
 	}
 	
-	
-
-//	@Override
-//	protected void onResume() {
-//		super.onResume();
-//		AccountManager am = AccountManager.get(this);
-//		am.addOnAccountsUpdatedListener(mListener, null, true);
-//	}
-//
-	@Override
-	protected void onPause() {
-		super.onPause();
-//		AccountManager am = AccountManager.get(this);
-//		am.removeOnAccountsUpdatedListener(mListener);
-		try{
-			dismissDialog(DIALOG_PROGRESS);
-		}catch(IllegalArgumentException e){
-		}
-	}
-
-	@Override
-	protected Dialog onCreateDialog(int id) {
-		switch(id){
-		case DIALOG_PROGRESS:
-			ProgressDialog dialog = new ProgressDialog(this);
-			dialog.setCancelable(false);
-			return dialog;
-		}
-		return super.onCreateDialog(id);
-	}
-	
 	@Override
 	public void onWindowFocusChanged(boolean hasFocus) {
 		super.onWindowFocusChanged(hasFocus);
@@ -133,8 +91,6 @@ public class AccountSettingActivity extends Activity {
 			am.removeOnAccountsUpdatedListener(mListener);
 		}
 	}
-
-
 
 	private class AccountData {
 		private Account mAccount;

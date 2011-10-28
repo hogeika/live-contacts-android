@@ -5,10 +5,9 @@ import java.io.IOException;
 import org.hogeika.android.app.Contacts.R;
 
 import android.app.Activity;
+import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.content.Intent;
-import android.content.SharedPreferences;
-import android.content.SharedPreferences.Editor;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
@@ -30,16 +29,22 @@ import com.google.api.client.http.apache.ApacheHttpTransport;
 public class GMailLoginActivity extends Activity {
 	public static final String EXTRA_ACCOUNT_NAME = "account_name";
 
+	public static final String RESULT_ACCOUNT_NAME = "acount_name";
+	public static final String RESULT_OAUTH_TOKEN = "oauth_token";
+	public static final String RESULT_OAUTH_TOKEN_SECRET = "oauth_token_secret";
+
 	private static final String SCOPE = "https://mail.google.com/";
 	private static final String CONSUMER_SECRET = "anonymous";
 	private static final String CONSUMER_KEY = "anonymous";	
 	private static final String CALLBACK_URL = "myapp://oauth";
 
+	private static final int DIALOG_PROGRESS = 1;
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		Intent intent = getIntent();
-		final String accountName = intent.getStringExtra(EXTRA_ACCOUNT_NAME);
+		final String accountName = intent.getStringExtra(EXTRA_ACCOUNT_NAME); // don't use now
 		if(accountName == null){
 			setResult(RESULT_CANCELED);
 			finish();
@@ -47,7 +52,7 @@ public class GMailLoginActivity extends Activity {
 		}
 		
 		setContentView(R.layout.twitter_login);
-		new Handler().postDelayed(new Runnable() {
+		new Handler().post(new Runnable() {
 			@Override
 			public void run() {
 				String appName = getResources().getString(R.string.app_name);
@@ -63,7 +68,9 @@ public class GMailLoginActivity extends Activity {
 				temporaryToken.callback = CALLBACK_URL;
 				
 				OAuthCredentialsResponse tempCredentiaals = null;
+				showDialog(DIALOG_PROGRESS);
 				try {
+					// TODO in background.
 					tempCredentiaals = temporaryToken.execute();
 					Log.d("GMailLoginActivity", "token = " + tempCredentiaals.token);
 					Log.d("GMailLoginActivity", "tokenSecret = " + tempCredentiaals.tokenSecret);
@@ -73,33 +80,31 @@ public class GMailLoginActivity extends Activity {
 					setResult(RESULT_CANCELED);
 					finish();
 					return;
+				}finally{
+					safeDismissDialog(DIALOG_PROGRESS);
 				}
 				
 				OAuthAuthorizeTemporaryTokenUrl authUrl = new OAuthAuthorizeTemporaryTokenUrl("https://www.google.com/accounts/OAuthAuthorizeToken");
 				authUrl.temporaryToken = tempCredentiaals.token;
 				
 				final String url = authUrl.build();
-				
+
 				final WebView webView = (WebView) findViewById(R.id.WebView_twitter_login);
 				CookieManager cm = CookieManager.getInstance();
 				cm.removeAllCookie();
 				WebSettings webSettings = webView.getSettings();
 				webSettings.setJavaScriptEnabled(true);
 				webView.setWebViewClient(new WebViewClient(){
-					private ProgressDialog progressDialog = new ProgressDialog(GMailLoginActivity.this);
-
 					@Override
 					public void onPageStarted(WebView view, String url, Bitmap favicon) {
 						super.onPageStarted(view, url, favicon);
-						progressDialog.show();
+						showDialog(DIALOG_PROGRESS);
 					}
 
 					@Override
 					public void onPageFinished(WebView view, String url) {
 						super.onPageFinished(view, url);
-						if(progressDialog.isShowing()){
-							progressDialog.dismiss();
-						}
+						safeDismissDialog(DIALOG_PROGRESS);
 						if(url != null && url.startsWith(CALLBACK_URL)){
 							Uri uri = Uri.parse(url);
 							String requestToken = uri.getQueryParameter("oauth_token");
@@ -115,23 +120,26 @@ public class GMailLoginActivity extends Activity {
 							accessToken.verifier = verifier;							
 
 							OAuthCredentialsResponse credentials;
+							showDialog(DIALOG_PROGRESS);
 							try {
+								// TODO in background.
 								credentials = accessToken.execute();
 							} catch (IOException e) {
-								// TODO Auto-generated catch block
 								e.printStackTrace();
+								setResult(RESULT_CANCELED);
+								finish();
 								return;
+							}finally{
+								safeDismissDialog(DIALOG_PROGRESS);
 							}
+							// Ugh! Can't check login account
 							Log.d("GMailLoginActivity", "access_token = " + credentials.token);
 							Log.d("GMailLoginActivity", "access_tokenSecret = " + credentials.tokenSecret);
 
-							SharedPreferences pref = getSharedPreferences(GMailManager.PREF, Activity.MODE_PRIVATE);
-							Editor editor = pref.edit();
-							editor.putString(GMailManager.PREF_GMAIL_OAUTH_TOKEN + "." + accountName, credentials.token);
-							editor.putString(GMailManager.PREF_GMAIL_OAUTH_TOKEN_SECRET + "." + accountName, credentials.tokenSecret);
-							editor.commit();
-
 							Intent result = new Intent();
+							result.putExtra(RESULT_ACCOUNT_NAME, accountName);
+							result.putExtra(RESULT_OAUTH_TOKEN, credentials.token);
+							result.putExtra(RESULT_OAUTH_TOKEN_SECRET, credentials.tokenSecret);
 							setResult(RESULT_OK, result);
 							finish();
 						}
@@ -139,6 +147,27 @@ public class GMailLoginActivity extends Activity {
 				});
 				webView.loadUrl(url);
 			}
-		}, 500);;
+		});
+	}
+	
+	@Override
+	protected Dialog onCreateDialog(int id) {
+		switch(id){
+		case DIALOG_PROGRESS:
+			return new ProgressDialog(this);
+		}
+		return super.onCreateDialog(id);
+	}
+	
+	private void safeDismissDialog(int id){
+		runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				try {
+					dismissDialog(DIALOG_PROGRESS);
+				}catch(IllegalArgumentException e){
+				}
+			}
+		});
 	}
 }

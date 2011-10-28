@@ -6,8 +6,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import org.hogeika.android.app.Contacts.R;
 import org.hogeika.android.app.Contacts.Manager;
+import org.hogeika.android.app.Contacts.R;
 import org.hogeika.android.app.Contacts.TimeLineManager;
 import org.hogeika.android.app.Contacts.TimeLineManager.TimeLineItem;
 
@@ -19,15 +19,17 @@ import twitter4j.TwitterException;
 import twitter4j.TwitterFactory;
 import twitter4j.UserMentionEntity;
 import twitter4j.auth.AccessToken;
-import twitter4j.auth.RequestToken;
 import twitter4j.conf.ConfigurationBuilder;
 import android.accounts.Account;
 import android.accounts.AccountManager;
 import android.accounts.AuthenticatorDescription;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.ContextWrapper;
+import android.content.DialogInterface;
+import android.content.DialogInterface.OnClickListener;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
@@ -52,8 +54,9 @@ public class TwitterManager implements Manager {
 	public static final String PREF_TWITTER_OAUTH_TOEKN_SECRET = "oauth_token_secret";
 
 	private static final int REQUEST_LOGIN_TWITTER = 1;
-	private int mRequestCode = REQUEST_LOGIN_TWITTER;
+	private int mRequestCodeLogin = REQUEST_LOGIN_TWITTER;
 
+	private final Context mContext;
 	private final ContentResolver mContentResolver;
 	private final TimeLineManager mTimeLineManager;
 	
@@ -62,11 +65,17 @@ public class TwitterManager implements Manager {
 	private TwitterFactory mFactory = null;
 	private Map<String, Twitter> mTwitterMap = new HashMap<String, Twitter>();
 
-	private Twitter mTmpTwitter = null;
-	private RequestToken mTmpRequestToken = null;
-	private Activity mTmpActivity = null;
-	
+	static TwitterFactory createTwitterFactory(Context context) {
+		Resources res = context.getResources();
+		ConfigurationBuilder conf = new ConfigurationBuilder();
+		conf.setOAuthConsumerKey(res.getString(R.string.twitter_oauth_consumer_key));
+		conf.setOAuthConsumerSecret(res.getString(R.string.twitter_oauth_consumer_secret));
+		TwitterFactory factory = new TwitterFactory(conf.build());
+		return factory;
+	}
+
 	public TwitterManager(Context context, TimeLineManager timeLineManager){
+		mContext = context;
 		mContentResolver = context.getContentResolver();
 		mTimeLineManager = timeLineManager;
 		
@@ -91,11 +100,7 @@ public class TwitterManager implements Manager {
 		}
 		mDMIcon = createIcon((BitmapDrawable) mIcon, "DM", Color.RED);
 		
-		Resources res = context.getResources();
-		ConfigurationBuilder conf = new ConfigurationBuilder();
-		conf.setOAuthConsumerKey(res.getString(R.string.twitter_oauth_consumer_key));
-		conf.setOAuthConsumerSecret(res.getString(R.string.twitter_oauth_consumer_secret));
-		mFactory = new TwitterFactory(conf.build());
+		mFactory = createTwitterFactory(context);
 		
 		timeLineManager.addManager(this);
 	}
@@ -136,8 +141,8 @@ public class TwitterManager implements Manager {
 		editor.commit();
 	}
 
-	public void setRequestCode(int code){
-		mRequestCode = code;
+	public void setRequestCode(int login){
+		mRequestCodeLogin = login;
 	}
 	
 	@Override
@@ -150,23 +155,10 @@ public class TwitterManager implements Manager {
 		if(mTwitterMap.containsKey(account.name)){
 			return;
 		}
-		if(mTmpActivity != null){
-			return;
-		}
 
-		try {
-			mTmpActivity = activity;
-			mTmpTwitter = mFactory.getInstance();
-			mTmpRequestToken = mTmpTwitter.getOAuthRequestToken(TwitterLoginActivity.CALLBACK_URL);
-			Intent intent = new Intent(mTmpActivity, TwitterLoginActivity.class);
-			intent.putExtra(TwitterLoginActivity.EXTRA_AUTH_URL, mTmpRequestToken.getAuthorizationURL());
-			mTmpActivity.startActivityForResult(intent, mRequestCode);
-		} catch (TwitterException e) {
-			e.printStackTrace();
-			mTmpActivity = null;
-			mTmpTwitter = null;
-			mTmpRequestToken = null;
-		}
+		Intent intent = new Intent(activity, TwitterLoginActivity.class);
+		intent.putExtra(TwitterLoginActivity.EXTRA_ACCOUNT_NAME, account.name);
+		activity.startActivityForResult(intent, mRequestCodeLogin);
 	}
 	
 	@Override
@@ -175,43 +167,47 @@ public class TwitterManager implements Manager {
 	
 	@Override
 	public void authorizeCallback(int requestCode, int resultCode, Intent data) {
-		if(mTmpTwitter != null && requestCode == mRequestCode){
-			if(resultCode == Activity.RESULT_OK){
-				String oauthVerifier = data.getStringExtra(TwitterLoginActivity.RESULT_OAUTH_VERIFIER);
-				String oauthToken = data.getStringExtra(TwitterLoginActivity.RESULT_OAUTH_TOKEN);
+		if(requestCode == mRequestCodeLogin && resultCode == Activity.RESULT_OK){
+			String accountName = data.getStringExtra(TwitterLoginActivity.RESULT_ACCOUNT_NAME);
+			String oauthToken = data.getStringExtra(TwitterLoginActivity.RESULT_OAUTH_TOKEN);
+			String oauthTokenSecret = data.getStringExtra(TwitterLoginActivity.RESULT_OAUTH_TOKEN_SECRET);
 
-				try {
-					AccessToken accessToken = mTmpTwitter.getOAuthAccessToken(mTmpRequestToken, oauthVerifier);
-					Log.d("Twitter", "oauth_token = " + accessToken.getToken());
-					Log.d("Twitter", "oauth_token_secret = " + accessToken.getTokenSecret());
-					if(!mTmpRequestToken.getToken().equals(oauthToken)){
-						Log.d("Twitter", "Ugh!");
-						return;
-					}
-					String accountName = mTmpTwitter.getScreenName();
-					Log.d("TwitterManager", "Login as " + accountName);
-					mTwitterMap.put(accountName, mTmpTwitter);
+			if(oauthToken.length()>0 && oauthTokenSecret.length()>0){
+				SharedPreferences pref = mContext.getSharedPreferences(PREF, Activity.MODE_PRIVATE);
+				Editor editor = pref.edit();
+				editor.putString(PREF_TWITTER_OAUTH_TOKEN + "." + accountName, oauthToken);
+				editor.putString(PREF_TWITTER_OAUTH_TOEKN_SECRET + "." + accountName, oauthTokenSecret);
+				editor.commit();
 
-					SharedPreferences pref = mTmpActivity.getSharedPreferences(PREF, Activity.MODE_PRIVATE);
-					Editor editor = pref.edit();
-					editor.putString(PREF_TWITTER_OAUTH_TOKEN + "." + accountName, accessToken.getToken());
-					editor.putString(PREF_TWITTER_OAUTH_TOEKN_SECRET + "." + accountName, accessToken.getTokenSecret());
-					editor.commit();
-
-					//				dumpDM(mTwitter);
-				} catch (TwitterException e) {
-					e.printStackTrace();
-				} finally {
-					mTmpRequestToken = null;
-					mTmpTwitter = null;
-					mTmpActivity = null;
-				}
-			}else{
-				mTmpRequestToken = null;
-				mTmpTwitter = null;
-				mTmpActivity = null;
-			}
+				AccessToken accessToken = new AccessToken(oauthToken, oauthTokenSecret);
+				Twitter twitter = mFactory.getInstance(accessToken);
+				mTwitterMap.put(accountName, twitter);
+			}	
 		}
+	}
+
+	@Override
+	public void logout(Activity activity, Account account) {
+		final String accountName = account.name;
+		AlertDialog.Builder builder = new AlertDialog.Builder(activity);
+		builder.setMessage(accountName);
+		builder.setPositiveButton("Logout", new OnClickListener() {		
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				mTwitterMap.remove(accountName);
+				
+				SharedPreferences pref = mContext.getSharedPreferences(PREF, Activity.MODE_PRIVATE);
+				Editor editor = pref.edit();
+				editor.remove(PREF_TWITTER_OAUTH_TOKEN + "." + accountName);
+				editor.remove(PREF_TWITTER_OAUTH_TOEKN_SECRET + "." + accountName);
+				editor.commit();
+
+			}
+		});
+		builder.setNegativeButton("Cancel", null);
+		AlertDialog dialog = builder.create();
+		dialog.setOwnerActivity(activity);
+		dialog.show();
 	}
 
 	@Override
@@ -219,19 +215,6 @@ public class TwitterManager implements Manager {
 		return mTwitterMap.containsKey(account.name);
 	}
 
-	@Override
-	public void logout(Activity activity, Account account) {
-		Intent intent = new Intent(activity, TwitterLogoutActivity.class);
-		activity.startActivity(intent);
-		
-		mTwitterMap.remove(account.name);
-		
-		SharedPreferences pref = activity.getSharedPreferences(PREF, Activity.MODE_PRIVATE);
-		Editor editor = pref.edit();
-		editor.remove(PREF_TWITTER_OAUTH_TOKEN + "." + account.name);
-		editor.remove(PREF_TWITTER_OAUTH_TOEKN_SECRET + "." + account.name);
-		editor.commit();
-	}
 	
 	@SuppressWarnings("unused")
 	private void dumpDM(Twitter twitter){
