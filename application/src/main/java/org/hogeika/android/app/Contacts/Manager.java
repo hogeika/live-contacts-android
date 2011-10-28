@@ -33,4 +33,6 @@ public interface Manager {
 	public String getActionText(String sourceType);
 
 	public int getActiveAccountCount();
+
+	public void clear();
 }

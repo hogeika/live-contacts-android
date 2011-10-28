@@ -417,5 +417,9 @@ public class TwitterManager implements Manager {
 		return mTwitterMap.size();
 	}
 
-	
+	@Override
+	public void clear() {
+		// TODO Auto-generated method stub
+		
+	}
 }

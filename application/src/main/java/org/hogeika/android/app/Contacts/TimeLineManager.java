@@ -942,6 +942,9 @@ public class TimeLineManager {
 			public void run() {
 				internalClear();
 				clearDB();
+				for(Manager manager : mManagerMap.values()){
+					manager.clear();
+				}
 				sync(Manager.SYNC_TYPE_LIGHT);
 				if(listener != null){
 					listener.onComplete();

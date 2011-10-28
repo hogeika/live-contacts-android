@@ -272,4 +272,8 @@ public class LocalContactManager implements Manager {
 	public int getActiveAccountCount() {
 		return 0;
 	}
+	@Override
+	public void clear() {
+		// TODO Auto-generated method stub	
+	}
 }

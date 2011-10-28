@@ -27,6 +27,7 @@ public class SettingActivity extends PreferenceActivity implements OnPreferenceC
 		super.onCreate(savedInstanceState);
 		mApplication = (ContactsApplication) getApplication();
 		mTimeLineManager = mApplication.getTimeLineManager();
+		boolean isSyncing = mTimeLineManager.isSyncing();
 		
 		addPreferencesFromResource(R.xml.setting);
 
@@ -73,6 +74,9 @@ public class SettingActivity extends PreferenceActivity implements OnPreferenceC
 		});
 		
 		p = findPreference("clear");
+		if(isSyncing){
+			p.setEnabled(false);
+		}
 		p.setOnPreferenceClickListener(new OnPreferenceClickListener() {
 			@Override
 			public boolean onPreferenceClick(Preference preference) {

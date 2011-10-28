@@ -828,4 +828,9 @@ public class MixiManager implements Manager {
 		}
 		return 0;
 	}
+
+	@Override
+	public void clear() {
+		// TODO Auto-generated method stub		
+	}
 }

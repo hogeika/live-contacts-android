@@ -401,4 +401,18 @@ public class GMailManager implements Manager {
 		return mAuthMap.size();
 	}
 
+	@Override
+	public void clear() {
+		SharedPreferences pref = mContext.getSharedPreferences(PREF, Activity.MODE_PRIVATE);
+		Editor editor = pref.edit();
+		for(Entry<String, AccountInfo> entry : mAuthMap.entrySet()){
+			String name = entry.getKey();
+			AccountInfo info = entry.getValue();
+			info.setInboxLatestUID(-1);
+			info.setOutboxLatestUID(-1);
+			editor.putLong(PREF_GMAIL_LATEST_UID_INBOX+ "." + name, -1);
+			editor.putLong(PREF_GMAIL_LATEST_UID_OUTBOX+ "." + name, -1);
+		}
+		editor.commit();
+	}
 }
