@@ -28,6 +28,7 @@ import android.provider.ContactsContract.CommonDataKinds.Phone;
 import android.provider.ContactsContract.RawContactsEntity;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.TelephonyManager;
+import android.text.format.DateUtils;
 import android.util.Log;
 
 public class LocalContactManager implements Manager {
@@ -159,13 +160,19 @@ public class LocalContactManager implements Manager {
 		String[] projection = new String[]{
 				Calls.TYPE,
 				Calls.DATE,
+				Calls.DURATION,
 				Calls.NUMBER,
 		};
 		Cursor cursor = mContentResolver.query(Calls.CONTENT_URI, projection, null, null, null);
+		int typeIndex = cursor.getColumnIndex(Calls.TYPE);
+		int dateIndex = cursor.getColumnIndex(Calls.DATE);
+		int durationIndex = cursor.getColumnIndex(Calls.DURATION);
+		int numberIndex = cursor.getColumnIndex(Calls.NUMBER);
 		while(cursor.moveToNext()){
-			int type = cursor.getInt(cursor.getColumnIndex(Calls.TYPE));
-			long date = cursor.getLong(cursor.getColumnIndex(Calls.DATE));
-			String number = cursor.getString(cursor.getColumnIndex(Calls.NUMBER));
+			int type = cursor.getInt(typeIndex);
+			long date = cursor.getLong(dateIndex);
+			int duration = cursor.getInt(durationIndex);
+			String number = cursor.getString(numberIndex);
 			if(number.startsWith("-")){
 				continue;
 			}
@@ -174,21 +181,22 @@ public class LocalContactManager implements Manager {
 			int direction = TimeLineItem.DIRECTION_INCOMING; // TODO
 			if(userMap.containsKey(number)){
 				String originalId;
+				String title = typeMap.get(number) + "(" + DateUtils.formatElapsedTime(duration) + ")";
 				switch(type){
 				case Calls.INCOMING_TYPE:
 					direction = TimeLineItem.DIRECTION_INCOMING;
 					originalId = getOriginalId("tel", date, number, mLocalNumber);
-					mTimeLineManager.addTimeLineItem(this, date, userMap.get(number), mLocalNumber, "tel-in", originalId, direction, typeMap.get(number), "Tel:" + number);
+					mTimeLineManager.addTimeLineItem(this, date, userMap.get(number), mLocalNumber, "tel-in", originalId, direction, title, "Tel:" + number);
 					break;
 				case Calls.OUTGOING_TYPE:
 					direction = TimeLineItem.DIRECTION_OUTGOING;
 					originalId = getOriginalId("tel", date, mLocalNumber, number);
-					mTimeLineManager.addTimeLineItem(this, date, userMap.get(number), mLocalNumber, "tel-out", originalId, direction, typeMap.get(number), "Tel:" + number);
+					mTimeLineManager.addTimeLineItem(this, date, userMap.get(number), mLocalNumber, "tel-out", originalId, direction, title, "Tel:" + number);
 					break;
 				case Calls.MISSED_TYPE:
 					direction = TimeLineItem.DIRECTION_MISSED;
 					originalId = getOriginalId("tel", date, number, mLocalNumber);
-					mTimeLineManager.addTimeLineItem(this, date, userMap.get(number), mLocalNumber, "tel-miss", originalId, direction, typeMap.get(number), "Tel:" + number);
+					mTimeLineManager.addTimeLineItem(this, date, userMap.get(number), mLocalNumber, "tel-miss", originalId, direction, title, "Tel:" + number);
 					break;			
 				}
 			}
