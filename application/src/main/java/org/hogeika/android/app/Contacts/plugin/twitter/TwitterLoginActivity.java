@@ -41,7 +41,8 @@ public class TwitterLoginActivity extends Activity {
 			finish();
 			return;
 		}
-		
+		setTitle(accountName);
+
 		setContentView(R.layout.twitter_login);
 		new Handler().post(new Runnable() {
 			@Override
