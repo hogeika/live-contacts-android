@@ -75,7 +75,7 @@ public class MainActivity extends TabActivity {
 				        Resources res = getResources();
 				        
 				        intent = new Intent(MainActivity.this, RecentSessionActivity.class);
-				        spec = tabHost.newTabSpec("contacts").setIndicator("Contacts",res.getDrawable(R.drawable.ic_tab_contacts)).setContent(intent);
+				        spec = tabHost.newTabSpec("recent").setIndicator("Recent",res.getDrawable(R.drawable.ic_tab_contacts)).setContent(intent);
 				        tabHost.addTab(spec);
 
 				        intent = new Intent(MainActivity.this, ActivityStreamActivity.class);
