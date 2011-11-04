@@ -1,12 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-  package="org.hogeika.android.app.Contacts" android:versionCode="1" android:versionName="0.0.1-SNAPSHOT">
+  package="org.hogeika.android.app.Contacts" android:versionName="0.0.2-SNAPSHOT" android:versionCode="2">
 <uses-permission android:name="android.permission.READ_SMS"></uses-permission>
 <uses-permission android:name="android.permission.READ_CONTACTS"></uses-permission>
 <uses-permission android:name="android.permission.INTERNET"></uses-permission>
 <uses-permission android:name="android.permission.GET_ACCOUNTS"></uses-permission>
-<uses-permission android:name="android.permission.MANAGE_ACCOUNTS"></uses-permission>
-<uses-permission android:name="android.permission.USE_CREDENTIALS"></uses-permission>
 <uses-permission android:name="android.permission.READ_PHONE_STATE"></uses-permission>
 <uses-permission android:name="android.permission.RECEIVE_SMS"></uses-permission>
 <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"></uses-permission>
