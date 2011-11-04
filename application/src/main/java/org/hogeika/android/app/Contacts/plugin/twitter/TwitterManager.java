@@ -340,6 +340,7 @@ public class TwitterManager implements Manager {
 				String sourceType = "tweet";
 				if(status.isRetweet()){
 					sourceType = "RT";
+					id = id + "-" + Long.toString(status.getRetweetedStatus().getId());
 					Log.d("FlowActivity", "Tweet(RT) :" + body);
 				}else{
 					Log.d("FlowActivity", "Tweet :" + body);
@@ -383,6 +384,14 @@ public class TwitterManager implements Manager {
 			Intent intent = new Intent();
 			intent.setClassName("com.twitter.android", "com.twitter.android.TweetActivity");
 			intent.setData(Uri.parse("content://com.twitter.android.provider.TwitterProvider/status_groups_view/id/" + originalId + "?ownerId=" + sourceAccount));
+			return intent;
+		}
+		if(sourceType.startsWith("RT")){
+			String tmp[] = originalId.split("-");
+			String retweetedId = tmp[1];
+			Intent intent = new Intent();
+			intent.setClassName("com.twitter.android", "com.twitter.android.TweetActivity");
+			intent.setData(Uri.parse("content://com.twitter.android.provider.TwitterProvider/status_groups_view/id/" + retweetedId + "?ownerId=" + sourceAccount));
 			return intent;
 		}
 		return null;
