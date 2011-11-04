@@ -325,29 +325,30 @@ public class MixiManager implements Manager {
 			
 			@Override
 			public void onFatal(ErrorInfo e) {
-				// TODO Auto-generated method stub
-				
+				clearAccount();
 			}
 			
 			@Override
 			public void onError(ErrorInfo e) {
-				// TODO Auto-generated method stub
-				
+				clearAccount();
 			}
 			
 			@Override
 			public void onComplete(Bundle values) {
+				clearAccount();
+			}
+			
+			@Override
+			public void onCancel() {
+				// TODO Auto-generated method stub				
+			}
+
+			private void clearAccount(){
 				SharedPreferences pref = mContext.getSharedPreferences(PREF, Activity.MODE_PRIVATE);
 				Editor editor = pref.edit();
 				editor.clear();
 				editor.commit();
 				mMeID = null;
-			}
-			
-			@Override
-			public void onCancel() {
-				// TODO Auto-generated method stub
-				
 			}
 		});
 	}
