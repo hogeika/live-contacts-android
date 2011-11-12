@@ -6,12 +6,12 @@
   <parent>
     <groupId>org.hogeika.android.app</groupId>
     <artifactId>Contacts-parent</artifactId>
-    <version>0.0.2-SNAPSHOT</version>
+    <version>0.0.3-SNAPSHOT</version>
   </parent>
 
   <groupId>org.hogeika.android.app</groupId>
   <artifactId>Contacts-it</artifactId>
-  <version>0.0.2-SNAPSHOT</version>
+  <version>0.0.3-SNAPSHOT</version>
   <packaging>apk</packaging>
   <name>Contacts - Integration tests</name>
 
@@ -36,14 +36,14 @@
       <groupId>org.hogeika.android.app</groupId>
       <artifactId>Contacts</artifactId>
       <type>apk</type>
-      <version>0.0.2-SNAPSHOT</version>
+      <version>0.0.3-SNAPSHOT</version>
       <classifier>${zipaligned-classifier}</classifier> <!--  classifier set according to the ran profile -->
     </dependency>
     <dependency>
       <groupId>org.hogeika.android.app</groupId>
       <artifactId>Contacts</artifactId>
       <type>jar</type>
-      <version>0.0.2-SNAPSHOT</version>
+      <version>0.0.3-SNAPSHOT</version>
     </dependency>
   </dependencies>
 
