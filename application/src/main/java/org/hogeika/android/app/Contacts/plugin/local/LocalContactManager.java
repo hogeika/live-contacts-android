@@ -18,6 +18,8 @@ import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
+import android.content.SharedPreferences.Editor;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.database.Cursor;
@@ -34,6 +36,10 @@ import android.util.Log;
 public class LocalContactManager implements Manager {
 	public static final String MANAGER_NAME = "localhost";
 
+	public static final String PREF = "local_seting";
+	public static final String PREF_LOCAL_LAST_CHECK_TIME = "last_check_time";
+	
+	private final Context mContext;
 	private final ContentResolver mContentResolver;
 	private final String mLocalNumber;
 	private final Resources mResources;
@@ -44,6 +50,7 @@ public class LocalContactManager implements Manager {
 	private final BroadcastReceiver mReceiver;
 	
 	public LocalContactManager(Context context, TimeLineManager timelineManager){
+		mContext = context;
 		mContentResolver = context.getContentResolver();
 		TelephonyManager tm = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
 		String localNumber = tm.getLine1Number();
@@ -118,14 +125,24 @@ public class LocalContactManager implements Manager {
 	public void logout(Activity activity, Account account) {
 	}
 
+	private long mLastCheckTime = 0;
+	
 	@Override
 	public void sync(int type) {
+		SharedPreferences pref = mContext.getSharedPreferences(PREF, Activity.MODE_PRIVATE);
+		mLastCheckTime = pref.getLong(PREF_LOCAL_LAST_CHECK_TIME, 0);
+		long now = System.currentTimeMillis() - 60 * 1000;
+		
 		final Map<String, Long> userMap = new HashMap<String, Long>();
 		final Map<String, String> typeMap = new HashMap<String, String>();
 		readUserMap(userMap, typeMap);
 		syncCallLog(userMap, typeMap);
 		syncSMS(TimeLineItem.DIRECTION_INCOMING, userMap, typeMap);
 		syncSMS(TimeLineItem.DIRECTION_OUTGOING, userMap, typeMap);
+		
+		Editor editor = pref.edit();
+		editor.putLong(PREF_LOCAL_LAST_CHECK_TIME, now);
+		editor.commit();
 	}
 	
 	private void readUserMap(final Map<String, Long> userMap, final Map<String, String> typeMap) {
@@ -163,7 +180,7 @@ public class LocalContactManager implements Manager {
 				Calls.DURATION,
 				Calls.NUMBER,
 		};
-		Cursor cursor = mContentResolver.query(Calls.CONTENT_URI, projection, null, null, null);
+		Cursor cursor = mContentResolver.query(Calls.CONTENT_URI, projection, Calls.DATE + "> ?",  new String[]{Long.toString(mLastCheckTime)}, null);
 		int typeIndex = cursor.getColumnIndex(Calls.TYPE);
 		int dateIndex = cursor.getColumnIndex(Calls.DATE);
 		int durationIndex = cursor.getColumnIndex(Calls.DURATION);
@@ -218,7 +235,7 @@ public class LocalContactManager implements Manager {
 			"body",
 			"address",
 		};
-		Cursor cursor = mContentResolver.query(uri, projection, null, null, null);
+		Cursor cursor = mContentResolver.query(uri, projection, "date > ?",  new String[]{Long.toString(mLastCheckTime)}, null);
 		while(cursor.moveToNext()){
 			long date = cursor.getLong(0);
 			String body = cursor.getString(1);

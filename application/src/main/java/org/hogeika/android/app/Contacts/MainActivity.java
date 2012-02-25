@@ -112,12 +112,12 @@ public class MainActivity extends TabActivity {
 		mApplication.initializeAsync(new InitializeCallback() {
 			@Override
 			public void onComplete() {
-				syncTimeLine(Manager.SYNC_TYPE_LIGHT);
 	        	try{
 	    			Log.d(TAG, "dismissDialog(DIALOG_PROGRESS)");
 	        		removeDialog(DIALOG_PROGRESS);
 				}catch(IllegalArgumentException e){
 				}
+				syncTimeLine(Manager.SYNC_TYPE_LIGHT);
 			}
 		});
 	}

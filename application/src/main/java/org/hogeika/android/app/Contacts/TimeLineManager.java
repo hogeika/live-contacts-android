@@ -178,18 +178,10 @@ public class TimeLineManager {
 		long diff = RETENTION_PERIOD * 24 * 60 * 60 * 1000L;
 		String whereClause = TimeStampColumns.TIMESTAMP + " < ?";
 		String[] whereArgs = new String[]{Long.toString(currentTime - diff)};
-		
-		Cursor messages = mDB.query(MessageColumns.TABLE_NAME, new String[]{MessageColumns._ID}, whereClause, whereArgs, null, null, null);
-		if(messages.moveToFirst()){
-			int idColumn = messages.getColumnIndex(MessageColumns._ID);
-			do{
-				long msg_id = messages.getLong(idColumn);
-				mDB.delete(TimeLineColumns.TABLE_NAME, TimeLineColumns.MESSAGE_ID + "=?", new String[]{Long.toString(msg_id)});
-			}while(messages.moveToNext());
-		}
-		messages.close();
+				
 		int count = 0;
-		count += mDB.delete(MessageColumns.TABLE_NAME, MessageColumns.TIMESTAMP + " < ?", whereArgs);
+		count += mDB.delete(TimeLineColumns.TABLE_NAME, TimeLineColumns.TABLE_NAME + "." + TimeLineColumns.MESSAGE_ID + "=(SELECT " + TimeLineColumns.TABLE_NAME +"." + TimeLineColumns.MESSAGE_ID + " FROM contacts_timeline WHERE " + whereClause +")", whereArgs);
+		count += mDB.delete(MessageColumns.TABLE_NAME, whereClause, whereArgs);
 		count += mDB.delete(ActivityStreamColumns.TABLE_NAME, whereClause, whereArgs);
 		Log.d(TAG, "Delete " + count + " rows.");
 	}
@@ -929,6 +921,10 @@ public class TimeLineManager {
 	}
 	
 	protected synchronized boolean addItem(TimeLineItemImpl item){
+		long currentTime = System.currentTimeMillis();
+		long diff = RETENTION_PERIOD * 24 * 60 * 60 * 1000L;
+		if(item.getTimeStamp() < (currentTime - diff)) return false;
+		
 		ContentValues values = new ContentValues();
 		values.put(MessageColumns.TIMESTAMP, item.getTimeStamp());
 		values.put(MessageColumns.SOURCE, item.getSource().getName());
@@ -943,10 +939,9 @@ public class TimeLineManager {
 		Cursor c = mDB.query(MessageColumns.TABLE_NAME, new String[]{MessageColumns._ID}, MessageColumns.ORIGINAL_ID + "=?", new String[]{item.mOriginalId},null,null,null);
 		try{
 			if(c.getCount() > 0){
-				//			c.moveToFirst();
-				//			msg_id = c.getLong(0);
-				//			db.update(MessageColumns.TABLE_NAME, values, MessageColumns.ORIGINAL_ID + " = ?", new String[]{item.mOriginalId});
-				return true;
+				c.moveToFirst();
+				msg_id = c.getLong(0);
+				mDB.update(MessageColumns.TABLE_NAME, values, MessageColumns.ORIGINAL_ID + " = ?", new String[]{item.mOriginalId});
 			}else{
 				msg_id = mDB.insert(MessageColumns.TABLE_NAME, null, values);
 			}
