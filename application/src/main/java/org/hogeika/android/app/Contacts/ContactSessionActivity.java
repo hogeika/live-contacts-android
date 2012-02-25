@@ -160,6 +160,12 @@ public class ContactSessionActivity extends AbstractTimeLiveViewActivity {
 		String displayName = c.getString(0);
 		contactName.setText(displayName);
 	}
+	
+	@Override
+	protected void onDestroy() {
+		mCursor.close();
+		super.onDestroy();
+	}
 
 	@Override
 	protected void onTimeLineUpdated() {

@@ -96,6 +96,12 @@ public class ActivityStreamActivity extends AbstractTimeLiveViewActivity {
 	}
 
 	@Override
+	protected void onDestroy() {
+		mCursor.close();
+		super.onDestroy();
+	}
+	
+	@Override
 	protected void onTimeLineUpdated() {
 		mCursor.close();
 		mCursor = getTimeLineManager().getActivityStreamCursor();
