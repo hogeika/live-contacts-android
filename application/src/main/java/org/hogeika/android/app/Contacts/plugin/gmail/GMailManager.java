@@ -1,5 +1,6 @@
 package org.hogeika.android.app.Contacts.plugin.gmail;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -48,6 +49,8 @@ import com.sun.mail.imap.IMAPMessage;
 import com.sun.mail.imap.IMAPSSLStore;
 
 public class GMailManager implements Manager {
+	private static final int MAX_MESSAGES = 200;
+
 	private static final String TAG = "GMailManager";
 
 	public static final String MANAGER_NAME = "gmail";
@@ -251,9 +254,13 @@ public class GMailManager implements Manager {
 		try {
 			if(lastUID >= 0){
 				messages = folder.getMessagesByUID(lastUID, UIDFolder.LASTUID);
+				if(messages.length > MAX_MESSAGES){
+					Message[] tmp = Arrays.copyOfRange(messages, messages.length - MAX_MESSAGES, messages.length);
+					messages = tmp;
+				}
 			}else{
 				int end = folder.getMessageCount();
-				int start = end - 100;
+				int start = end - MAX_MESSAGES;
 				if(start < 1) start = 1;
 				messages = folder.getMessages(start,end);
 			}
