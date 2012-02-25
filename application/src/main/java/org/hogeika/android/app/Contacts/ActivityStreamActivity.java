@@ -5,9 +5,11 @@ import java.text.DateFormat;
 import org.hogeika.android.app.Contacts.TimeLineManager.ActivityStreamCursor;
 
 import android.content.Context;
+import android.content.Intent;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.os.Bundle;
+import android.provider.ContactsContract;
 import android.provider.ContactsContract.QuickContact;
 import android.text.format.DateUtils;
 import android.view.View;
@@ -76,18 +78,18 @@ public class ActivityStreamActivity extends AbstractTimeLiveViewActivity {
 			@Override
 			public void onItemClick(AdapterView<?> parent, View view,
 					int position, long id) {
-//				ActivityStreamItem data = adapter.getItem(position);
-//				Intent intent = data.getIntent();
-//				if(intent != null){
-//					startActivity(intent);
-//				}
+				ActivityStreamCursor c = (ActivityStreamCursor)mAdapter.getItem(position);
+				Intent intent = c.getIntent();
+				if(intent != null){
+					startActivity(intent);
+				}
 			}
 		});
 		mListView.setOnItemLongClickListener(new OnItemLongClickListener() {
 			@Override
 			public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
-//				ActivityStreamItem data = adapter.getItem(position);
-//				ContactsContract.QuickContact.showQuickContact(getApplicationContext(), view, data.getUser().getContactLookupUri(), ContactsContract.QuickContact.MODE_MEDIUM, null);
+				ActivityStreamCursor c = (ActivityStreamCursor)mAdapter.getItem(position);
+				ContactsContract.QuickContact.showQuickContact(getApplicationContext(), view, c.getContactLookupUri(), ContactsContract.QuickContact.MODE_MEDIUM, null);
 				return true;
 			}
 		});

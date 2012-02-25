@@ -3,9 +3,11 @@ package org.hogeika.android.app.Contacts;
 import java.io.InputStream;
 import java.text.DateFormat;
 
+import org.apache.commons.lang.StringUtils;
 import org.hogeika.android.app.Contacts.TimeLineManager.TimeLineCursor;
 import org.hogeika.android.app.Contacts.TimeLineManager.TimeLineItem;
 
+import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
@@ -16,28 +18,58 @@ import android.os.Bundle;
 import android.provider.ContactsContract.Contacts;
 import android.provider.ContactsContract.QuickContact;
 import android.text.format.DateUtils;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
+import android.widget.CursorAdapter;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.QuickContactBadge;
-import android.widget.ResourceCursorAdapter;
 import android.widget.TextView;
 
 public class ContactSessionActivity extends AbstractTimeLiveViewActivity {
 	public static final String EXTRA_CONTACT_LOOKUP_URI = "contact_lookup_uri";
 	
-	private class ContactSessionAdapter extends ResourceCursorAdapter {
+	private class ContactSessionAdapter extends CursorAdapter {
+		private Context mContext;
+		private LayoutInflater mInflater;
 
 		public ContactSessionAdapter(Context context, TimeLineCursor cursor) {
-			super(context, R.layout.listitem_contact_session_incoming, cursor);
+			super(context, cursor);
+			mContext = context;
+			mInflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+		}
+
+		@Override
+		public View newView(Context context, Cursor cursor, ViewGroup parent) {
+			TimeLineCursor c = (TimeLineCursor)cursor;
+			int direction = c.getDirection();
+			View view;
+			if(direction == TimeLineItem.DIRECTION_OUTGOING){
+				view = mInflater.inflate(R.layout.listitem_contact_session_outgoing, parent, false);
+			}else{
+				view = mInflater.inflate(R.layout.listitem_contact_session_incoming, parent, false);
+			}
+			return view;
 		}
 
 		@Override
 		public View getView(int position, View convertView, ViewGroup parent) {
-			// TODO Auto-generated method stub
+			TimeLineCursor cursor = (TimeLineCursor) getItem(position);
+
+			if (convertView == null) {
+				convertView = newView(mContext, cursor, parent);
+			} else {
+				int direction = cursor.getDirection();
+				if(convertView.getId() == R.id.Layout_outgoing && direction != TimeLineItem.DIRECTION_OUTGOING){
+					convertView = mInflater.inflate(R.layout.listitem_contact_session_incoming, parent, false);
+				}
+				else if(convertView.getId() == R.id.Layout_incoming && direction == TimeLineItem.DIRECTION_OUTGOING){
+					convertView = mInflater.inflate(R.layout.listitem_contact_session_outgoing, parent, false);
+				}
+			}
 			return super.getView(position, convertView, parent);
 		}
 
@@ -93,29 +125,23 @@ public class ContactSessionActivity extends AbstractTimeLiveViewActivity {
 			@Override
 			public void onItemClick(AdapterView<?> parent, View view,
 					int position, long id) {
-//				TimeLineItem data = mAdapter.getItem(position);
-//				TimeLineUser targetUser = null;
-//				for(TimeLineUser tmp : data.getUsers()){
-//					if(tmp.getContactLookupUri().equals(mLookupUri)){
-//						targetUser = tmp;
-//						break;
-//					}
-//				}
-//				Intent intent = data.getIntent(targetUser);
-//				if(intent != null){
-//					startActivity(intent);
-//				}else{
-//					String message = data.getSummary();
-//					if(StringUtils.isEmpty(message)){
-//						message = data.getTitle();
-//					}
-//					AlertDialog dialog = new AlertDialog.Builder(ContactSessionActivity.this)
-//						.setMessage(message)
-//						.setCancelable(true)
-//						.setNegativeButton("close", null)
-//						.create();
-//					dialog.show();
-//				}
+				TimeLineCursor c = (TimeLineCursor) mAdapter.getItem(position);
+
+				Intent intent = c.getIntent();
+				if(intent != null){
+					startActivity(intent);
+				}else{
+					String message = c.getSummary();
+					if(StringUtils.isEmpty(message)){
+						message = c.getTitle();
+					}
+					AlertDialog dialog = new AlertDialog.Builder(ContactSessionActivity.this)
+						.setMessage(message)
+						.setCancelable(true)
+						.setNegativeButton("close", null)
+						.create();
+					dialog.show();
+				}
 			}
 		});
 

@@ -73,7 +73,7 @@ public class TimeLineManager {
 	}
 	private class TimeLineDB extends SQLiteOpenHelper {
 		
-		private static final int VERSION = 1;
+		private static final int VERSION = 2;
 		private static final String NAME = "timeline.db";
 
 		public TimeLineDB(Context context) {
@@ -86,9 +86,11 @@ public class TimeLineManager {
 		}
 
 		@Override
-		public void onUpgrade(SQLiteDatabase arg0, int arg1, int arg2) {
-			// TODO Auto-generated method stub
-			
+		public void onUpgrade(SQLiteDatabase db, int oldVer, int newVer) {
+			if(oldVer <= 1){
+				db.execSQL("DROP VIEW IF EXISTS contacts_timeline;");
+				db.execSQL("CREATE VIEW IF NOT EXISTS contacts_timeline AS SELECT *,message.* FROM timeline INNER JOIN message ON timeline.message_id=message._ID;");
+			}
 		}
 	}
 
@@ -167,17 +169,8 @@ public class TimeLineManager {
 		mNotificationManager = (NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
 		mHandler = new Handler(mContext.getMainLooper());
 		purgeDB(); // purge old data
-		loadDB();
 	}
 
-	private void loadDB() {
-		SQLiteDatabase db = mDBHelper.getReadableDatabase();
-		
-		// TODO move
-//		db.execSQL("DROP VIEW IF EXISTS contacts_timeline;");
-		db.execSQL("CREATE VIEW IF NOT EXISTS contacts_timeline AS SELECT *,message.* FROM timeline INNER JOIN message ON timeline.message_id=message._ID;");
-	}
-	
 	private void purgeDB(){
 		long currentTime = System.currentTimeMillis();
 		long diff = RETENTION_PERIOD * 24 * 60 * 60 * 1000L;
@@ -779,9 +772,11 @@ public class TimeLineManager {
 		String getSummary();
 		String getTitle();
 		Drawable getTypeIcon();
+		Intent getIntent();
 	}
 	
 	private class TimeLineCursorImpl extends AbstractDelegateCursor implements TimeLineCursor {
+		private final int mRawContactIdColum;
 		private final int mTimestampColumn;
 		private final int mSourceColumn;
 		private final int mSourceAccountColumn;
@@ -795,6 +790,7 @@ public class TimeLineManager {
 
 		protected TimeLineCursorImpl(Cursor cursor) {
 			super(cursor);
+			mRawContactIdColum = mCursor.getColumnIndex(TimeLineColumns.RAW_CONTACT_ID);
 			mTimestampColumn = mCursor.getColumnIndex(MessageColumns.TIMESTAMP);
 			mSourceColumn = mCursor.getColumnIndex(MessageColumns.SOURCE);
 			mSourceAccountColumn =mCursor.getColumnIndex(MessageColumns.SOURCE_ACCOUNT);
@@ -812,7 +808,9 @@ public class TimeLineManager {
 		
 		private TimeLineItem getTimeLineItem(){
 			if(mCurrentTimeLineItem != null) return mCurrentTimeLineItem;
-			Set<TimeLineUser> users = new HashSet<TimeLineUser>(); // TODO Ugh! empty
+			long rawContactId = mCursor.getLong(mRawContactIdColum);
+			Set<TimeLineUser> users = new HashSet<TimeLineUser>();
+			users.add(newTimeLineUser(rawContactId));
 			long timeStamp = mCursor.getLong(mTimestampColumn);
 			String source = mCursor.getString(mSourceColumn);
 			String sourceAccount = mCursor.getString(mSourceAccountColumn);
@@ -857,11 +855,19 @@ public class TimeLineManager {
 			TimeLineItem item = getTimeLineItem();
 			return item.getIconDrawable();
 		}
+
+		@Override
+		public Intent getIntent() {
+			TimeLineItem item = getTimeLineItem();
+			TimeLineUser user = item.getUsers().toArray(new TimeLineUser[]{})[0]; // TODO
+			return item.getIntent(user);
+		}
 	}
 	
 	public synchronized TimeLineCursor getTimeLineCursor(Uri contactLookupUri){
 		SQLiteDatabase db = mDBHelper.getReadableDatabase();
 		String lookupKey  = contactLookupUri.getPathSegments().get(2);
+//		Cursor cursor = db.query("contacts_timeline", null, TimeLineColumns.LOOKUP_KEY + "=?", new String[]{lookupKey}, null, null, MessageColumns.TIMESTAMP + " DESC");
 		Cursor cursor = db.rawQuery("SELECT * FROM contacts_timeline WHERE lookup=? ORDER BY time_stamp DESC", new String[]{lookupKey});
 		return new TimeLineCursorImpl(cursor);
 	}
@@ -1209,7 +1215,6 @@ public class TimeLineManager {
 			@Override
 			public void run() {
 				internalClear();
-				loadDB();
 				if(listener != null){
 					listener.onComplete();
 				}
@@ -1227,7 +1232,6 @@ public class TimeLineManager {
 			public void run() {
 				internalClear();
 				purgeDB();
-				loadDB();
 				if(listener != null){
 					listener.onComplete();
 				}

@@ -91,7 +91,6 @@ public class RecentSessionActivity extends AbstractTimeLiveViewActivity {
 		mListView.setOnItemClickListener(new OnItemClickListener() {
 			@Override
 			public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-//				ContactData data = adapter.getItem(position);
 				Intent intent = new Intent(getApplicationContext(), ContactSessionActivity.class);
 				intent.putExtra(ContactSessionActivity.EXTRA_CONTACT_LOOKUP_URI, (Uri)view.getTag());
 				startActivity(intent);
@@ -100,7 +99,6 @@ public class RecentSessionActivity extends AbstractTimeLiveViewActivity {
 		mListView.setOnItemLongClickListener(new OnItemLongClickListener() {
 			@Override
 			public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
-//				ContactData data = adapter.getItem(position);
 				ContactsContract.QuickContact.showQuickContact(getApplicationContext(), view, (Uri)view.getTag(), ContactsContract.QuickContact.MODE_MEDIUM, null);
 				return true;
 			}
