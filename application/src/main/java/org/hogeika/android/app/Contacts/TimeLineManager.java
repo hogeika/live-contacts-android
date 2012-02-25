@@ -1,17 +1,11 @@
 package org.hogeika.android.app.Contacts;
 
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.SortedMap;
-import java.util.SortedSet;
-import java.util.TreeMap;
-import java.util.TreeSet;
 
 import android.app.AlarmManager;
 import android.app.Notification;
@@ -22,13 +16,17 @@ import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.database.CharArrayBuffer;
+import android.database.ContentObserver;
 import android.database.Cursor;
+import android.database.DataSetObserver;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.SystemClock;
 import android.provider.BaseColumns;
@@ -126,6 +124,7 @@ public class TimeLineManager {
 				ActivityStreamColumns.SUMMARY + " text," +
 				ActivityStreamColumns.URL + " text" +
 				");");
+		db.execSQL("CREATE VIEW contacts_timeline AS SELECT *,message.* FROM timeline INNER JOIN message ON timeline.message_id=message._ID;");
 	}
 	
 	private void dropTables(SQLiteDatabase db){
@@ -144,22 +143,7 @@ public class TimeLineManager {
 
 	private Context mContext;
 	private ContentResolver mContentRsolver;
-	private Comparator<TimeLineItem> mTimeLineComparator;
-	private Map<TimeLineUser, SortedSet<TimeLineItem>> mContactsTimeLine = new HashMap<TimeLineUser, SortedSet<TimeLineItem>>();
-	private SortedSet<ActivityStreamItem> mActivityStream = new TreeSet<ActivityStreamItem>(new Comparator<ActivityStreamItem>() {
-		@Override
-		public int compare(ActivityStreamItem o1, ActivityStreamItem o2) {
-			long time1 = o1.getTimeStamp();
-			long time2 = o2.getTimeStamp();
-			if(time1 < time2) {
-				return 1; 
-			}
-			if(time1 > time2) {
-				return -1;
-			}
-			return o1.getUser().compareTo(o2.getUser());
-		}
-	});
+
 	private SQLiteOpenHelper mDBHelper;
 	private NotificationManager mNotificationManager;
 	private Map<String, Manager> mManagerMap = new HashMap<String, Manager>();
@@ -180,20 +164,6 @@ public class TimeLineManager {
 		mContext = context;
 		mDBHelper = new TimeLineDB(context);
 		mContentRsolver = context.getContentResolver();
-		mTimeLineComparator = new Comparator<TimeLineItem>() {
-			@Override
-			public int compare(TimeLineItem o1, TimeLineItem o2) {
-				long time1 = o1.getTimeStamp();
-				long time2 = o2.getTimeStamp();
-				if(time1 < time2) {
-					return 1; 
-				}
-				if(time1 > time2) {
-					return -1;
-				}
-				return o1.hashCode() - o2.hashCode(); // ugh!
-			}
-		};
 		mNotificationManager = (NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
 		mHandler = new Handler(mContext.getMainLooper());
 		purgeDB(); // purge old data
@@ -202,80 +172,10 @@ public class TimeLineManager {
 
 	private void loadDB() {
 		SQLiteDatabase db = mDBHelper.getReadableDatabase();
-		Cursor messages = db.query(MessageColumns.TABLE_NAME, null, null, null, null, null, null);
-		if(messages.moveToFirst()){
-			int idColumn = messages.getColumnIndex(MessageColumns._ID);
-			int timestampColumn = messages.getColumnIndex(MessageColumns.TIMESTAMP);
-			int sourceColumn = messages.getColumnIndex(MessageColumns.SOURCE);
-			int sourceAccountColumn = messages.getColumnIndex(MessageColumns.SOURCE_ACCOUNT);
-			int sourceTypeColumn = messages.getColumnIndex(MessageColumns.SOURCE_TYPE);
-			int originalIdColumn = messages.getColumnIndex(MessageColumns.ORIGINAL_ID);
-			int directionColumn = messages.getColumnIndex(MessageColumns.DIRECTION);
-			int titleColumn = messages.getColumnIndex(MessageColumns.TITLE);
-			int summaryColumn = messages.getColumnIndex(MessageColumns.SUMMARY);
-			do{
-				long msg_id = messages.getLong(idColumn);
-				long timeStamp = messages.getLong(timestampColumn);
-				String source = messages.getString(sourceColumn);
-				String sourceAccount = messages.getString(sourceAccountColumn);
-				String sourceType = messages.getString(sourceTypeColumn);
-				String originalId = messages.getString(originalIdColumn);
-				int direction = messages.getInt(directionColumn);
-				String title = messages.getString(titleColumn);
-				String summary = messages.getString(summaryColumn);
-				
-				Cursor timeline = db.query(TimeLineColumns.TABLE_NAME, new String[]{TimeLineColumns.RAW_CONTACT_ID}, TimeLineColumns.MESSAGE_ID + "=" + msg_id, null, null, null,null);
-				if(timeline.moveToFirst()){
-					Set<TimeLineUser> users = new HashSet<TimeLineUser>();
-					int rawContactIdColumn = timeline.getColumnIndex(TimeLineColumns.RAW_CONTACT_ID);
-					do {
-						long rawContactId = timeline.getLong(rawContactIdColumn);
-						TimeLineUser user = newTimeLineUser(rawContactId);
-						if(user == null){
-							// TODO
-							continue;
-						}
-						users.add(user);
-					}while(timeline.moveToNext());
-					TimeLineItemImpl item = new TimeLineItemImpl(source, timeStamp, users, sourceAccount, sourceType, originalId, direction, title, summary);
-					internalAddItem(item);
-				}
-				timeline.close();
-			}while(messages.moveToNext());
-		}
-		messages.close();
-
-		Cursor activity = db.query(ActivityStreamColumns.TABLE_NAME, null, null, null, null, null, null);
-		if(activity.moveToFirst()){
-			int rawContactIdColumn = activity.getColumnIndex(ActivityStreamColumns.RAW_CONTACT_ID);
-			int timestampColumn = activity.getColumnIndex(ActivityStreamColumns.TIMESTAMP);
-			int sourceColumn = activity.getColumnIndex(ActivityStreamColumns.SOURCE);
-			int sourceAccountColumn = activity.getColumnIndex(ActivityStreamColumns.SOURCE_ACCOUNT);
-			int sourceTypeColumn = activity.getColumnIndex(ActivityStreamColumns.SOURCE_TYPE);
-			int originalIdColumn = activity.getColumnIndex(ActivityStreamColumns.ORIGINAL_ID);
-			int summaryColumn = activity.getColumnIndex(ActivityStreamColumns.SUMMARY);
-			int urlColumn = activity.getColumnIndex(ActivityStreamColumns.URL);
-			do{
-				long rawContactId = activity.getLong(rawContactIdColumn);
-				long timeStamp = activity.getLong(timestampColumn);
-				String source = activity.getString(sourceColumn);
-				String sourceAccount = activity.getString(sourceAccountColumn);
-				String sourceType = activity.getString(sourceTypeColumn);
-				String originalId = activity.getString(originalIdColumn);
-				String summary = activity.getString(summaryColumn);
-				String url = activity.getString(urlColumn);
-				
-				TimeLineUser user = newTimeLineUser(rawContactId);
-				if(user == null){
-					// TODO
-					continue;
-				}
-				ActivityStreamItemImpl item = new ActivityStreamItemImpl(source, timeStamp, user, sourceAccount, sourceType, originalId, summary, url);
-				internalAddActivityStreamItem(item);
-			}while(activity.moveToNext());
-		}
-		activity.close();
-		db.close();
+		
+		// TODO move
+//		db.execSQL("DROP VIEW IF EXISTS contacts_timeline;");
+		db.execSQL("CREATE VIEW IF NOT EXISTS contacts_timeline AS SELECT *,message.* FROM timeline INNER JOIN message ON timeline.message_id=message._ID;");
 	}
 	
 	private void purgeDB(){
@@ -298,7 +198,6 @@ public class TimeLineManager {
 		count += db.delete(MessageColumns.TABLE_NAME, MessageColumns.TIMESTAMP + " < ?", whereArgs);
 		count += db.delete(ActivityStreamColumns.TABLE_NAME, whereClause, whereArgs);
 		Log.d(TAG, "Delete " + count + " rows.");
-		db.close();
 	}
 
 	private void clearDB(){
@@ -701,49 +600,331 @@ public class TimeLineManager {
 		return null;
 	}
 	
-	public synchronized SortedSet<TimeLineItem> getTimeLine(Uri contactLookupUri){
-		String lookupKey  = contactLookupUri.getPathSegments().get(2);
-		SortedSet<TimeLineItem> result = mContactsTimeLine.get(new TimeLineUserImpl(lookupKey));
-		return result;
-	}
-	
-	public synchronized SortedMap<TimeLineUser, SortedSet<TimeLineItem>> getRecentContacts(){
-		SortedMap<TimeLineUser, SortedSet<TimeLineItem>> tmp = new TreeMap<TimeLineUser, SortedSet<TimeLineItem>>(new Comparator<TimeLineUser>() {
-			@Override
-			public int compare(TimeLineUser o1, TimeLineUser o2) {
-				long time1 = mContactsTimeLine.get(o1).first().getTimeStamp();
-				long time2 = mContactsTimeLine.get(o2).first().getTimeStamp();
-				if(time1 < time2){
-					return 1;
-				}
-				if(time1 > time2){
-					return -1;
-				}
-				return o1.compareTo(o2);
-			}
-		});
-		for(TimeLineUser user : mContactsTimeLine.keySet()){
-			// Clone TimeLine
-			tmp.put(user, new TreeSet<TimeLineManager.TimeLineItem>(mContactsTimeLine.get(user)));
+	private abstract class AbstractDelegateCursor implements Cursor {
+		protected final Cursor mCursor;
+		
+		protected AbstractDelegateCursor(Cursor cursor){
+			this.mCursor = cursor;
 		}
-		return tmp;
-	}
-	
-	protected synchronized void internalAddItem(TimeLineItem item){
-		for(TimeLineUser user : item.getUsers()){
-			SortedSet<TimeLineItem> set;
-			if(mContactsTimeLine.containsKey(user)){
-				set = mContactsTimeLine.get(user);
-			}else{
-				set = new TreeSet<TimeLineItem>(mTimeLineComparator);
-				mContactsTimeLine.put(user, set);
-			}
-			set.add(item);
+		
+		protected abstract void invalidateCache();
+		
+		// Delegate methods
+		public void close() {
+			mCursor.close();
+			invalidateCache();
+		}
+
+		public void copyStringToBuffer(int columnIndex, CharArrayBuffer buffer) {
+			mCursor.copyStringToBuffer(columnIndex, buffer);
+		}
+
+		public void deactivate() {
+			mCursor.deactivate();
+			invalidateCache();
+		}
+
+		public byte[] getBlob(int columnIndex) {
+			return mCursor.getBlob(columnIndex);
+		}
+
+		public int getColumnCount() {
+			return mCursor.getColumnCount();
+		}
+
+		public int getColumnIndex(String columnName) {
+			return mCursor.getColumnIndex(columnName);
+		}
+
+		public int getColumnIndexOrThrow(String columnName)
+				throws IllegalArgumentException {
+			return mCursor.getColumnIndexOrThrow(columnName);
+		}
+
+		public String getColumnName(int columnIndex) {
+			return mCursor.getColumnName(columnIndex);
+		}
+
+		public String[] getColumnNames() {
+			return mCursor.getColumnNames();
+		}
+
+		public int getCount() {
+			return mCursor.getCount();
+		}
+
+		public double getDouble(int columnIndex) {
+			return mCursor.getDouble(columnIndex);
+		}
+
+		public Bundle getExtras() {
+			return mCursor.getExtras();
+		}
+
+		public float getFloat(int columnIndex) {
+			return mCursor.getFloat(columnIndex);
+		}
+
+		public int getInt(int columnIndex) {
+			return mCursor.getInt(columnIndex);
+		}
+
+		public long getLong(int columnIndex) {
+			return mCursor.getLong(columnIndex);
+		}
+
+		public int getPosition() {
+			return mCursor.getPosition();
+		}
+
+		public short getShort(int columnIndex) {
+			return mCursor.getShort(columnIndex);
+		}
+
+		public String getString(int columnIndex) {
+			return mCursor.getString(columnIndex);
+		}
+
+		public boolean getWantsAllOnMoveCalls() {
+			return mCursor.getWantsAllOnMoveCalls();
+		}
+
+		public boolean isAfterLast() {
+			return mCursor.isAfterLast();
+		}
+
+		public boolean isBeforeFirst() {
+			return mCursor.isBeforeFirst();
+		}
+
+		public boolean isClosed() {
+			return mCursor.isClosed();
+		}
+
+		public boolean isFirst() {
+			return mCursor.isFirst();
+		}
+
+		public boolean isLast() {
+			return mCursor.isLast();
+		}
+
+		public boolean isNull(int columnIndex) {
+			return mCursor.isNull(columnIndex);
+		}
+
+		public boolean move(int offset) {
+			invalidateCache();
+			return mCursor.move(offset);
+		}
+
+		public boolean moveToFirst() {
+			invalidateCache();
+			return mCursor.moveToFirst();
+		}
+
+		public boolean moveToLast() {
+			invalidateCache();
+			return mCursor.moveToLast();
+		}
+
+		public boolean moveToNext() {
+			invalidateCache();
+			return mCursor.moveToNext();
+		}
+
+		public boolean moveToPosition(int position) {
+			invalidateCache();
+			return mCursor.moveToPosition(position);
+		}
+
+		public boolean moveToPrevious() {
+			invalidateCache();
+			return mCursor.moveToPrevious();
+		}
+
+		public void registerContentObserver(ContentObserver observer) {
+			mCursor.registerContentObserver(observer);
+		}
+
+		public void registerDataSetObserver(DataSetObserver observer) {
+			mCursor.registerDataSetObserver(observer);
+		}
+
+		public boolean requery() {
+			invalidateCache();
+			return mCursor.requery();
+		}
+
+		public Bundle respond(Bundle extras) {
+			return mCursor.respond(extras);
+		}
+
+		public void setNotificationUri(ContentResolver cr, Uri uri) {
+			mCursor.setNotificationUri(cr, uri);
+		}
+
+		public void unregisterContentObserver(ContentObserver observer) {
+			mCursor.unregisterContentObserver(observer);
+		}
+
+		public void unregisterDataSetObserver(DataSetObserver observer) {
+			mCursor.unregisterDataSetObserver(observer);
 		}		
 	}
 	
+	public interface TimeLineCursor extends Cursor {
+		long getTimeStamp();
+		int getDirection();
+		String getSummary();
+		String getTitle();
+		Drawable getTypeIcon();
+	}
+	
+	private class TimeLineCursorImpl extends AbstractDelegateCursor implements TimeLineCursor {
+		private final int mTimestampColumn;
+		private final int mSourceColumn;
+		private final int mSourceAccountColumn;
+		private final int mSourceTypeColumn;
+		private final int mOriginalIdColumn;
+		private final int mDirectionColumn;
+		private final int mTitleColumn;
+		private final int mSummaryColumn;
+
+		private TimeLineItem mCurrentTimeLineItem = null;
+
+		protected TimeLineCursorImpl(Cursor cursor) {
+			super(cursor);
+			mTimestampColumn = mCursor.getColumnIndex(MessageColumns.TIMESTAMP);
+			mSourceColumn = mCursor.getColumnIndex(MessageColumns.SOURCE);
+			mSourceAccountColumn =mCursor.getColumnIndex(MessageColumns.SOURCE_ACCOUNT);
+			mSourceTypeColumn = mCursor.getColumnIndex(MessageColumns.SOURCE_TYPE);
+			mOriginalIdColumn = mCursor.getColumnIndex(MessageColumns.ORIGINAL_ID);
+			mDirectionColumn = mCursor.getColumnIndex(MessageColumns.DIRECTION);
+			mTitleColumn = mCursor.getColumnIndex(MessageColumns.TITLE);
+			mSummaryColumn = mCursor.getColumnIndex(MessageColumns.SUMMARY);
+		}
+
+		@Override
+		protected void invalidateCache() {
+			mCurrentTimeLineItem = null;
+		}
+		
+		private TimeLineItem getTimeLineItem(){
+			if(mCurrentTimeLineItem != null) return mCurrentTimeLineItem;
+			Set<TimeLineUser> users = new HashSet<TimeLineUser>(); // TODO Ugh! empty
+			long timeStamp = mCursor.getLong(mTimestampColumn);
+			String source = mCursor.getString(mSourceColumn);
+			String sourceAccount = mCursor.getString(mSourceAccountColumn);
+			String sourceType = mCursor.getString(mSourceTypeColumn);
+			String originalId = mCursor.getString(mOriginalIdColumn);
+			int direction = mCursor.getInt(mDirectionColumn);
+			String title = mCursor.getString(mTitleColumn);
+			String summary = mCursor.getString(mSummaryColumn);
+			mCurrentTimeLineItem = new TimeLineItemImpl(source, timeStamp, users, sourceAccount, sourceType, originalId, direction, title, summary);
+			return mCurrentTimeLineItem;
+		}
+
+		@Override
+		public long getTimeStamp() {
+			TimeLineItem item = getTimeLineItem();
+			return item.getTimeStamp();
+		}
+
+
+		@Override
+		public int getDirection() {
+			TimeLineItem item = getTimeLineItem();
+			return item.getDirection();
+		}
+
+		@Override
+		public String getSummary() {
+			TimeLineItem item = getTimeLineItem();
+			return item.getSummary();
+		}
+
+
+		@Override
+		public String getTitle() {
+			TimeLineItem item = getTimeLineItem();
+			return item.getTitle();
+		}
+
+
+		@Override
+		public Drawable getTypeIcon() {
+			TimeLineItem item = getTimeLineItem();
+			return item.getIconDrawable();
+		}
+	}
+	
+	public synchronized TimeLineCursor getTimeLineCursor(Uri contactLookupUri){
+		SQLiteDatabase db = mDBHelper.getReadableDatabase();
+		String lookupKey  = contactLookupUri.getPathSegments().get(2);
+		Cursor cursor = db.rawQuery("SELECT * FROM contacts_timeline WHERE lookup=? ORDER BY time_stamp DESC", new String[]{lookupKey});
+		return new TimeLineCursorImpl(cursor);
+	}
+	
+	public interface RecentContactsCursor extends TimeLineCursor {
+		Bitmap getIcon();
+		Uri getContactLookupUri();
+		String getDisplayName();
+	}
+	
+	private class RecentContactsCursorImpl extends TimeLineCursorImpl implements RecentContactsCursor {
+		private final int mRawContactIdColumn;
+		
+		private TimeLineUser mCurrentTimeLineUser = null;
+		
+		public RecentContactsCursorImpl(Cursor cursor) {
+			super(cursor);
+			mRawContactIdColumn = mCursor.getColumnIndex(TimeLineColumns.RAW_CONTACT_ID);
+		}
+		
+		@Override
+		protected void invalidateCache(){
+			super.invalidateCache();
+			mCurrentTimeLineUser = null;
+		}
+		
+		private TimeLineUser getTimeLineUser() {
+			if(mCurrentTimeLineUser != null) return mCurrentTimeLineUser;
+			long rawContactId = mCursor.getLong(mRawContactIdColumn);
+			mCurrentTimeLineUser = newTimeLineUser(rawContactId);
+			return mCurrentTimeLineUser;
+		}
+		
+		@Override
+		public Bitmap getIcon() {
+			TimeLineUser user = getTimeLineUser();
+			if(user==null) return null;
+			return user.getBitmapIcon();
+		}
+
+
+		@Override
+		public Uri getContactLookupUri() {
+			TimeLineUser user = getTimeLineUser();
+			if(user==null) return null; // TODO Ugh!
+			return user.getContactLookupUri();
+		}
+
+		@Override
+		public String getDisplayName() {
+			TimeLineUser user = getTimeLineUser();
+			if(user==null) return "Unknown"; // TODO Ugh!
+			return user.getDisplayName();
+		}
+	}
+	
+	public synchronized RecentContactsCursor getRecentContactsCursor(){
+		SQLiteDatabase db = mDBHelper.getReadableDatabase();
+		Cursor cursor = db.rawQuery("SELECT * FROM contacts_timeline as x WHERE time_stamp=(SELECT MAX(time_stamp) FROM contacts_timeline WHERE lookup=x.lookup) ORDER BY time_stamp DESC", null);
+		return new RecentContactsCursorImpl(cursor);
+	}
+	
 	protected synchronized boolean addItem(TimeLineItemImpl item){
-		internalAddItem(item);
 		SQLiteDatabase db = mDBHelper.getWritableDatabase();
 		
 		ContentValues values = new ContentValues();
@@ -781,60 +962,183 @@ public class TimeLineManager {
 		}finally{
 			c.close();
 		}
-		db.close();
 		return true;
-	}
-	
-	protected synchronized void internalAddActivityStreamItem(ActivityStreamItem item){
-		mActivityStream.add(item);
 	}
 	
 	public synchronized boolean addActivityStreamItem(Manager source, long timeStamp, long rawContactId, String sourceAccount, String sourceType, String originalId, String summary, String url){
 		TimeLineUser user = newTimeLineUser(rawContactId);
 		ActivityStreamItemImpl item = new ActivityStreamItemImpl(source.getName(), timeStamp, user, sourceAccount, sourceType, originalId, summary, url);
-		internalAddActivityStreamItem(item);
 		
 		SQLiteDatabase db = mDBHelper.getWritableDatabase();
-		try{
-			ContentValues values = new ContentValues();
-			values.put(ActivityStreamColumns.RAW_CONTACT_ID, user.getRawContactId());
-			values.put(ActivityStreamColumns.LOOKUP_KEY, user.getContactLookupKey());
-			values.put(ActivityStreamColumns.TIMESTAMP, item.getTimeStamp());
-			values.put(ActivityStreamColumns.SOURCE, item.mSourceName);
-			values.put(ActivityStreamColumns.SOURCE_ACCOUNT, item.mSourceAccount);
-			values.put(ActivityStreamColumns.SOURCE_TYPE, item.mSourceType);
-			values.put(ActivityStreamColumns.ORIGINAL_ID, item.mOriginalId);
-			values.put(ActivityStreamColumns.SUMMARY, item.getSummary());
-			values.put(ActivityStreamColumns.URL, item.getURLString());
+		ContentValues values = new ContentValues();
+		values.put(ActivityStreamColumns.RAW_CONTACT_ID, user.getRawContactId());
+		values.put(ActivityStreamColumns.LOOKUP_KEY, user.getContactLookupKey());
+		values.put(ActivityStreamColumns.TIMESTAMP, item.getTimeStamp());
+		values.put(ActivityStreamColumns.SOURCE, item.mSourceName);
+		values.put(ActivityStreamColumns.SOURCE_ACCOUNT, item.mSourceAccount);
+		values.put(ActivityStreamColumns.SOURCE_TYPE, item.mSourceType);
+		values.put(ActivityStreamColumns.ORIGINAL_ID, item.mOriginalId);
+		values.put(ActivityStreamColumns.SUMMARY, item.getSummary());
+		values.put(ActivityStreamColumns.URL, item.getURLString());
 
-			long msg_id = -1;
-			Cursor c = db.query(ActivityStreamColumns.TABLE_NAME, new String[]{ActivityStreamColumns._ID}, ActivityStreamColumns.ORIGINAL_ID + "=? and " +  ActivityStreamColumns.SOURCE + "=?", new String[]{item.mOriginalId, item.mSourceName},null,null,null);
-			try {
-				if(c.getCount() > 0){
-					c.moveToFirst();
-					msg_id = c.getLong(0);
-					db.update(ActivityStreamColumns.TABLE_NAME, values, ActivityStreamColumns._ID + " = ?", new String[]{Long.toString(msg_id)});
-					return true;
-				}else{
-					msg_id = db.insert(ActivityStreamColumns.TABLE_NAME, null, values);
-				}
-				if(msg_id == -1){
-					return false;
-				}
-			}finally{
-				c.close();
+		long msg_id = -1;
+		Cursor c = db.query(ActivityStreamColumns.TABLE_NAME, new String[]{ActivityStreamColumns._ID}, ActivityStreamColumns.ORIGINAL_ID + "=? and " +  ActivityStreamColumns.SOURCE + "=?", new String[]{item.mOriginalId, item.mSourceName},null,null,null);
+		try {
+			if(c.getCount() > 0){
+				c.moveToFirst();
+				msg_id = c.getLong(0);
+				db.update(ActivityStreamColumns.TABLE_NAME, values, ActivityStreamColumns._ID + " = ?", new String[]{Long.toString(msg_id)});
+				return true;
+			}else{
+				msg_id = db.insert(ActivityStreamColumns.TABLE_NAME, null, values);
+			}
+			if(msg_id == -1){
+				return false;
 			}
 		}finally{
-			db.close();
+			c.close();
 		}
 		return true;
 	}
 
-	public synchronized List<ActivityStreamItem> getActivityStream(){
-		List<ActivityStreamItem> result = new ArrayList<ActivityStreamItem>(mActivityStream);
-		return result;
+	public interface ActivityStreamCursor extends Cursor {
+		public Bitmap getIcon();
+		public Uri getContactLookupUri();
+		public String getDisplayName();
+		
+		public long getTimeStamp();
+		public Intent getIntent();
+		public Manager getSource();
+		public String getSourceType();
+		public String getSummary();
+		public String getURLString();
+		public Drawable getTypeIcon();
+		public String getActionText();		
 	}
 
+	private class ActivityStreamCursorImpl extends AbstractDelegateCursor implements ActivityStreamCursor {
+		private final int mRawContactIdColumn;
+		private final int mTimestampColumn;
+		private final int mSourceColumn;
+		private final int mSourceAccountColumn;
+		private final int mSourceTypeColumn;
+		private final int mOriginalIdColumn;
+		private final int mSummaryColumn;
+		private final int mUrlColumn;
+		
+		protected ActivityStreamCursorImpl(Cursor cursor) {
+			super(cursor);
+			mRawContactIdColumn = cursor.getColumnIndex(ActivityStreamColumns.RAW_CONTACT_ID);
+			mTimestampColumn = cursor.getColumnIndex(ActivityStreamColumns.TIMESTAMP);
+			mSourceColumn = cursor.getColumnIndex(ActivityStreamColumns.SOURCE);
+			mSourceAccountColumn = cursor.getColumnIndex(ActivityStreamColumns.SOURCE_ACCOUNT);
+			mSourceTypeColumn = cursor.getColumnIndex(ActivityStreamColumns.SOURCE_TYPE);
+			mOriginalIdColumn = cursor.getColumnIndex(ActivityStreamColumns.ORIGINAL_ID);
+			mSummaryColumn = cursor.getColumnIndex(ActivityStreamColumns.SUMMARY);
+			mUrlColumn = cursor.getColumnIndex(ActivityStreamColumns.URL);
+		}
+
+		private ActivityStreamItem mCurrentItem = null;
+		
+		@Override
+		protected void invalidateCache() {
+			mCurrentItem = null;
+		}
+		
+		private ActivityStreamItem getCurentItem(){
+			if(mCurrentItem != null) return mCurrentItem;
+			long rawContactId = mCursor.getLong(mRawContactIdColumn);
+			long timeStamp = mCursor.getLong(mTimestampColumn);
+			String source = mCursor.getString(mSourceColumn);
+			String sourceAccount = mCursor.getString(mSourceAccountColumn);
+			String sourceType = mCursor.getString(mSourceTypeColumn);
+			String originalId = mCursor.getString(mOriginalIdColumn);
+			String summary = mCursor.getString(mSummaryColumn);
+			String url = mCursor.getString(mUrlColumn);
+			
+			TimeLineUser user = newTimeLineUser(rawContactId);
+			mCurrentItem = new ActivityStreamItemImpl(source, timeStamp, user, sourceAccount, sourceType, originalId, summary, url);
+			return mCurrentItem;
+		}
+
+		@Override
+		public long getTimeStamp() {
+			ActivityStreamItem item = getCurentItem();
+			return item.getTimeStamp();
+		}
+
+		@Override
+		public Intent getIntent() {
+			ActivityStreamItem item = getCurentItem();
+			return item.getIntent();
+		}
+
+		@Override
+		public Manager getSource() {
+			ActivityStreamItem item = getCurentItem();
+			return item.getSource();
+		}
+
+		@Override
+		public String getSourceType() {
+			ActivityStreamItem item = getCurentItem();
+			return item.getSourceType();
+		}
+
+		@Override
+		public String getSummary() {
+			ActivityStreamItem item = getCurentItem();
+			return item.getSummary();
+		}
+
+		@Override
+		public String getURLString() {
+			ActivityStreamItem item = getCurentItem();
+			return item.getURLString();
+		}
+
+		@Override
+		public Drawable getTypeIcon() {
+			ActivityStreamItem item = getCurentItem();
+			return item.getIconDrawable();
+		}
+
+		@Override
+		public String getActionText() {
+			ActivityStreamItem item = getCurentItem();
+			return item.getActionText();
+		}
+
+		@Override
+		public Bitmap getIcon() {
+			ActivityStreamItem item = getCurentItem();
+			TimeLineUser user = item.getUser();
+			if(user == null) return null;
+			return user.getBitmapIcon();
+		}
+
+		@Override
+		public String getDisplayName() {
+			ActivityStreamItem item = getCurentItem();
+			TimeLineUser user = item.getUser();
+			if(user == null) return "Unknown";
+			return user.getDisplayName();
+		}
+
+		@Override
+		public Uri getContactLookupUri() {
+			ActivityStreamItem item = getCurentItem();
+			TimeLineUser user = item.getUser();
+			if(user == null) return null;
+			return user.getContactLookupUri();
+		}
+	}
+	
+	public synchronized ActivityStreamCursor getActivityStreamCursor(){
+		SQLiteDatabase db = mDBHelper.getReadableDatabase();
+		Cursor cursor = db.query(ActivityStreamColumns.TABLE_NAME, null, null, null, null, null, ActivityStreamColumns.TIMESTAMP + " DESC");
+		return new ActivityStreamCursorImpl(cursor);
+	}
 	
 	public interface Listener {
 		public void onUpdate();
@@ -955,8 +1259,6 @@ public class TimeLineManager {
 	}
 	
 	protected synchronized void internalClear(){
-		mContactsTimeLine.clear();
-		mActivityStream.clear();
 		mRawContactIdCache.clear();
 		mLookupUriCache.clear();
 	}
