@@ -94,7 +94,7 @@ public class TimeLineManager {
 		}
 	}
 
-	private static final int RETENTION_PERIOD = 90;
+	private static final int RETENTION_PERIOD = 30;
 
 	private void createTables(SQLiteDatabase db){
 		db.execSQL("CREATE TABLE " + TimeLineColumns.TABLE_NAME + " (" +
