@@ -20,6 +20,7 @@ import javax.mail.internet.MimeMultipart;
 import org.apache.commons.lang.StringUtils;
 import org.hogeika.android.app.Contacts.Manager;
 import org.hogeika.android.app.Contacts.TimeLineManager;
+import org.hogeika.android.app.Contacts.TimeLineManager.Listener;
 import org.hogeika.android.app.Contacts.TimeLineManager.TimeLineItem;
 import org.hogeika.android.app.Contacts.plugin.twitter.TwitterLoginActivity;
 
@@ -49,6 +50,8 @@ import com.sun.mail.imap.IMAPMessage;
 import com.sun.mail.imap.IMAPSSLStore;
 
 public class GMailManager implements Manager {
+	private static final String ELIMINATION_REGEXP = "(?m)^.+$(\r?\n^(>|＞).*$)+\r?\n?\\Z";
+
 	private static final int MAX_MESSAGES = 200;
 
 	private static final String TAG = "GMailManager";
@@ -240,12 +243,14 @@ public class GMailManager implements Manager {
 		}		
 		for(String name : mAuthMap.keySet()){
 			AccountInfo info = mAuthMap.get(name);
+			mTimeLineManager.notifyOnSyncStateChange(Listener.SYNC_START, this, type, name, 0, 0);
 			syncOne(name, info, userMap);
 			SharedPreferences pref = mContext.getSharedPreferences(PREF, Activity.MODE_PRIVATE);
 			Editor editor = pref.edit();
 			editor.putLong(PREF_GMAIL_LATEST_UID_INBOX+ "." + name, info.getInboxLatestUID());
 			editor.putLong(PREF_GMAIL_LATEST_UID_OUTBOX+ "." + name, info.getOutboxLatestUID());
 			editor.commit();
+			mTimeLineManager.notifyOnSyncStateChange(Listener.SYNC_END, this, type, name, 0, 0);
 		}
 	}
 	
@@ -286,7 +291,8 @@ public class GMailManager implements Manager {
 				folder.open(Folder.READ_ONLY);
 				Log.d(TAG, "messageCount = " + folder.getMessageCount());
 				long lastUID = info.getInboxLatestUID();
-				messages = getLastMessages(folder, lastUID);				
+				messages = getLastMessages(folder, lastUID);
+				int count = 0;
 				for(Message tmp : messages){
 					if(!(tmp instanceof IMAPMessage)) continue; // Ugh!
 					IMAPMessage message = (IMAPMessage)tmp;
@@ -311,6 +317,7 @@ public class GMailManager implements Manager {
 						Log.d(TAG, "body = " + body);
 						mTimeLineManager.addTimeLineItem(this, timeStamp, fromSet, name, "email", msgId, TimeLineItem.DIRECTION_INCOMING, subject, body);
 					}
+					mTimeLineManager.notifyOnSyncStateChange(Listener.SYNC_PROGRESS, this, SYNC_TYPE_HEAVY, name + "/inbox", ++count, messages.length);
 				}
 				info.setInboxLatestUID(folder.getUIDNext());
 				folder.close(false);
@@ -323,6 +330,7 @@ public class GMailManager implements Manager {
 				long lastUID = info.getOutboxLatestUID();
 				messages = getLastMessages(folder, lastUID);	
 				
+				int count = 0;
 				for(Message tmp : messages){
 					if(!(tmp instanceof IMAPMessage)) continue; // Ugh!
 					IMAPMessage message = (IMAPMessage)tmp;
@@ -347,6 +355,7 @@ public class GMailManager implements Manager {
 						Log.d(TAG, "body = " + body);
 						mTimeLineManager.addTimeLineItem(this, timeStamp, toSet, name, "email", msgId, TimeLineItem.DIRECTION_OUTGOING, subject, body);
 					}
+					mTimeLineManager.notifyOnSyncStateChange(Listener.SYNC_PROGRESS, this, SYNC_TYPE_HEAVY, name + "/outbox", ++count, messages.length);
 				}
 				info.setOutboxLatestUID(folder.getUIDNext());
 				folder.close(false);
@@ -355,6 +364,10 @@ public class GMailManager implements Manager {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+	}
+
+	private String shapingBody(String body) {
+		return body.replaceAll(ELIMINATION_REGEXP, "\n");
 	}
 
 	private String getTextBody(IMAPMessage message) {
@@ -380,7 +393,7 @@ public class GMailManager implements Manager {
 		}catch(Exception e){
 			e.printStackTrace();
 		}
-		return body;
+		return shapingBody(body);
 	}
 
 	@Override

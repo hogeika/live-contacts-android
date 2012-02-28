@@ -5,6 +5,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import org.hogeika.android.app.Contacts.TimeLineManager.Listener;
 import org.hogeika.android.app.Contacts.plugin.gmail.GMailManager;
 import org.hogeika.android.app.Contacts.plugin.local.LocalContactManager;
 import org.hogeika.android.app.Contacts.plugin.mixi.MixiManager;
@@ -13,6 +14,10 @@ import org.hogeika.android.app.Contacts.plugin.twitter.TwitterManager;
 import android.accounts.Account;
 import android.app.Activity;
 import android.app.Application;
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
@@ -26,6 +31,9 @@ public class ContactsApplication extends Application {
 	public static final int REQUEST_LOGIN_GMAIL = 5;
 	public static final int REQUEST_LOGOUT_GMAIL = 6; // Don't use
 
+	private static final int NOTIFICATION_ID_SYNC = 1;
+
+	private NotificationManager mNotificationManager;
 	
 	private TimeLineManager mTimeLineManager = null;
 	/*package*/ LocalContactManager mLocalContactManager = null;
@@ -40,6 +48,7 @@ public class ContactsApplication extends Application {
 		Log.d("ContactFlowApplication", "onCreate()");
 		super.onCreate();
 		mExecutor = Executors.newSingleThreadExecutor();
+		mNotificationManager = (NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE);
 		initializeAsync(null);
 	}
 
@@ -102,6 +111,51 @@ public class ContactsApplication extends Application {
 				if(callback != null){
 					callback.onComplete();
 				}
+				
+				mTimeLineManager.addListener(new Listener() {
+					@Override
+					public void onUpdate() {
+					}
+					
+					@Override
+					public void onSyncStateChange(int state, Manager manager, int type, String accountName, int count, int total) {
+						switch(state){
+						case Listener.SYNC_START:
+						case Listener.SYNC_PROGRESS:
+							if(type == Manager.SYNC_TYPE_LIGHT){
+								break;
+							}
+							Notification notification = new Notification(android.R.drawable.stat_notify_sync, "Start sync.", System.currentTimeMillis());
+							Intent intent = new Intent(ContactsApplication.this, MainActivity.class);
+							PendingIntent pi = PendingIntent.getActivity(ContactsApplication.this, 0, intent, 0);
+							String sync_message = "syncing..";
+							if(manager != null){
+								sync_message +=  manager.getName();
+								if(accountName != null){
+									sync_message += "(" + accountName + ")";
+									if(total > 0){
+										sync_message += "["+count+"/"+total+"]";
+									}
+								}
+							}
+							notification.setLatestEventInfo(ContactsApplication.this, "ContactFlow", sync_message, pi);
+							notification.flags |= Notification.FLAG_ONGOING_EVENT;
+							mNotificationManager.notify(NOTIFICATION_ID_SYNC, notification);
+							break;
+						case Listener.SYNC_END:
+							if(manager != null){
+								break;
+							}
+							if(accountName == null){
+								mNotificationManager.cancel(NOTIFICATION_ID_SYNC);
+							}
+							break;
+						case Listener.SYNC_ERROR:
+							break;
+						}
+					}
+				});
+
 				mInitializeLatch.countDown();
 			}
 		}).start();

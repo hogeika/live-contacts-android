@@ -9,6 +9,7 @@ import java.util.Set;
 import org.hogeika.android.app.Contacts.Manager;
 import org.hogeika.android.app.Contacts.R;
 import org.hogeika.android.app.Contacts.TimeLineManager;
+import org.hogeika.android.app.Contacts.TimeLineManager.Listener;
 import org.hogeika.android.app.Contacts.TimeLineManager.TimeLineItem;
 
 import twitter4j.DirectMessage;
@@ -240,7 +241,10 @@ public class TwitterManager implements Manager {
 		if(type == SYNC_TYPE_LIGHT){
 			return;
 		}
-		for(Twitter twitter : mTwitterMap.values()){
+		for(String name : mTwitterMap.keySet()){
+			Twitter twitter = mTwitterMap.get(name);
+			mTimeLineManager.notifyOnSyncStateChange(Listener.SYNC_START, this, type, name, 0, 0);
+
 			final Map<Long, Long> userMap = new HashMap<Long, Long>();
 			Cursor c = mContentResolver.query(RawContactsEntity.CONTENT_URI, new String[]{RawContactsEntity._ID, RawContactsEntity.DATA1}, RawContactsEntity.MIMETYPE + "='vnd.android.cursor.item/vnd.twitter.profile'", null, null);
 			while(c.moveToNext()){
@@ -251,6 +255,7 @@ public class TwitterManager implements Manager {
 			syncDM(twitter, userMap);
 			syncMentions(twitter, userMap);
 			syncHomeTimeline(twitter, userMap);
+			mTimeLineManager.notifyOnSyncStateChange(Listener.SYNC_END, this, type, name, 0, 0);
 		}
 	}
 	private void syncDM(Twitter twitter, final Map<Long, Long> userMap) {

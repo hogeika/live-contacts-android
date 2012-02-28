@@ -299,6 +299,9 @@ public class LocalContactManager implements Manager {
 	}
 	@Override
 	public void clear() {
-		// TODO Auto-generated method stub	
+		SharedPreferences pref = mContext.getSharedPreferences(PREF, Activity.MODE_PRIVATE);
+		Editor editor = pref.edit();
+		editor.putLong(PREF_LOCAL_LAST_CHECK_TIME, 0);
+		editor.commit();
 	}
 }

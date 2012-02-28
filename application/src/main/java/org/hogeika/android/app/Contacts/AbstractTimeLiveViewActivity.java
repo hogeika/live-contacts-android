@@ -17,6 +17,10 @@ public abstract class AbstractTimeLiveViewActivity extends Activity {
 		public void onUpdate() {
 			onTimeLineUpdated();
 		}
+
+		@Override
+		public void onSyncStateChange(int state, Manager manager, int type, String accountName, int count, int total) {
+		}
 	};
 
 	@Override

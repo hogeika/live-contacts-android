@@ -8,8 +8,6 @@ import java.util.Map;
 import java.util.Set;
 
 import android.app.AlarmManager;
-import android.app.Notification;
-import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.ContentResolver;
 import android.content.ContentUris;
@@ -97,13 +95,13 @@ public class TimeLineManager {
 	private static final int RETENTION_PERIOD = 30;
 
 	private void createTables(SQLiteDatabase db){
-		db.execSQL("CREATE TABLE " + TimeLineColumns.TABLE_NAME + " (" +
+		db.execSQL("CREATE TABLE IF NOT EXISTS " + TimeLineColumns.TABLE_NAME + " (" +
 				TimeLineColumns._ID + "  integer primary key autoincrement," +
 				TimeLineColumns.RAW_CONTACT_ID + " bigint not null," +
 				TimeLineColumns.LOOKUP_KEY + " text not null," +
 				TimeLineColumns.MESSAGE_ID + " integer not null" +
 				");");
-		db.execSQL("CREATE TABLE " + MessageColumns.TABLE_NAME + " (" +
+		db.execSQL("CREATE TABLE IF NOT EXISTS " + MessageColumns.TABLE_NAME + " (" +
 				MessageColumns._ID + "  integer primary key autoincrement," +
 				MessageColumns.TIMESTAMP + " bigint not null," +
 				MessageColumns.SOURCE + " text not null," +
@@ -114,7 +112,7 @@ public class TimeLineManager {
 				MessageColumns.TITLE + " text," +
 				MessageColumns.SUMMARY + " text" +
 				");");
-		db.execSQL("CREATE TABLE " + ActivityStreamColumns.TABLE_NAME + " (" +
+		db.execSQL("CREATE TABLE IF NOT EXISTS " + ActivityStreamColumns.TABLE_NAME + " (" +
 				ActivityStreamColumns._ID + "  integer primary key autoincrement," +
 				ActivityStreamColumns.RAW_CONTACT_ID + " bigint not null," +
 				ActivityStreamColumns.LOOKUP_KEY + " text not null," +
@@ -126,13 +124,14 @@ public class TimeLineManager {
 				ActivityStreamColumns.SUMMARY + " text," +
 				ActivityStreamColumns.URL + " text" +
 				");");
-		db.execSQL("CREATE VIEW contacts_timeline AS SELECT *,message.* FROM timeline INNER JOIN message ON timeline.message_id=message._ID;");
+		db.execSQL("CREATE VIEW IF NOT EXISTS contacts_timeline AS SELECT *,message.* FROM timeline INNER JOIN message ON timeline.message_id=message._ID;");
 	}
 	
 	private void dropTables(SQLiteDatabase db){
-		db.execSQL("drop table " + MessageColumns.TABLE_NAME + ";");
-		db.execSQL("drop table " + TimeLineColumns.TABLE_NAME + ";");
-		db.execSQL("drop table " + ActivityStreamColumns.TABLE_NAME + ";");
+		db.execSQL("drop table if exists " + MessageColumns.TABLE_NAME + ";");
+		db.execSQL("drop table if exists " + TimeLineColumns.TABLE_NAME + ";");
+		db.execSQL("drop table if exists " + ActivityStreamColumns.TABLE_NAME + ";");
+		db.execSQL("drop view if exists contacts_timeline;");
 	}
 	
 	private static TimeLineManager mInstance = null;
@@ -148,7 +147,6 @@ public class TimeLineManager {
 
 	private SQLiteOpenHelper mDBHelper;
 	private SQLiteDatabase mDB;
-	private NotificationManager mNotificationManager;
 	private Map<String, Manager> mManagerMap = new HashMap<String, Manager>();
 	private Handler mHandler;
 	
@@ -168,7 +166,6 @@ public class TimeLineManager {
 		mDBHelper = new TimeLineDB(context);
 		mDB = mDBHelper.getWritableDatabase();
 		mContentRsolver = context.getContentResolver();
-		mNotificationManager = (NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
 		mHandler = new Handler(mContext.getMainLooper());
 		purgeDB(); // purge old data
 	}
@@ -1136,6 +1133,12 @@ public class TimeLineManager {
 	}
 	
 	public interface Listener {
+		public static final int SYNC_START = 1;
+		public static final int SYNC_PROGRESS = 2;
+		public static final int SYNC_END = 3;
+		public static final int SYNC_ERROR = 4;
+		
+		public void onSyncStateChange(int state, Manager manager, int type, String accountName, int count, int total);
 		public void onUpdate();
 	}
 	
@@ -1160,7 +1163,17 @@ public class TimeLineManager {
 		});
 	}
 	
-	private static final int NOTIFICATION_ID_SYNC = 1;
+	public void notifyOnSyncStateChange(final int state, final Manager manager, final int type, final String accountName, final int count, final int total){
+		mHandler.post(new Runnable() {
+			@Override
+			public void run() {
+				for(Listener listener : mListeners){
+					listener.onSyncStateChange(state, manager, type, accountName, count, total);
+				}
+			}
+		});
+	}
+	
 	private boolean mIsSyncing = false;
 	public synchronized void sync(final int type){
 		if(mIsSyncing){
@@ -1170,21 +1183,14 @@ public class TimeLineManager {
 		new Thread(new Runnable() {
 			@Override
 			public void run() {
-				if(type == Manager.SYNC_TYPE_HEAVY){
-					Notification notification = new Notification(android.R.drawable.stat_notify_sync, "Start sync.", System.currentTimeMillis());
-					Intent intent = new Intent(mContext, MainActivity.class);
-					PendingIntent pi = PendingIntent.getActivity(mContext, 0, intent, 0);
-					notification.setLatestEventInfo(mContext, "ContactFlow", "syncing..", pi);
-					notification.flags |= Notification.FLAG_ONGOING_EVENT;
-					mNotificationManager.notify(NOTIFICATION_ID_SYNC, notification);
-				}
+				notifyOnSyncStateChange(Listener.SYNC_START, null, type, null, 0, 0);
 				for(Manager manager : mManagerMap.values()){
+					notifyOnSyncStateChange(Listener.SYNC_START, manager, type, null, 0, 0);
 					manager.sync(type);
-				}
-				if(type == Manager.SYNC_TYPE_HEAVY){
-					mNotificationManager.cancel(NOTIFICATION_ID_SYNC);
+					notifyOnSyncStateChange(Listener.SYNC_END, manager, type, null, 0, 0);
 				}
 				mIsSyncing = false;
+				notifyOnSyncStateChange(Listener.SYNC_END, null, type, null, 0, 0);
 				notifyOnUpdate();
 			}
 		}).start();

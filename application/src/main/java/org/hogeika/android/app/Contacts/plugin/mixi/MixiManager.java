@@ -20,6 +20,7 @@ import org.apache.commons.lang.time.FastDateFormat;
 import org.hogeika.android.app.Contacts.R;
 import org.hogeika.android.app.Contacts.Manager;
 import org.hogeika.android.app.Contacts.TimeLineManager;
+import org.hogeika.android.app.Contacts.TimeLineManager.Listener;
 import org.hogeika.android.app.Contacts.TimeLineManager.TimeLineItem;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -423,6 +424,7 @@ public class MixiManager implements Manager {
 		if(type == SYNC_TYPE_LIGHT){
 			return;
 		}
+		mTimeLineManager.notifyOnSyncStateChange(Listener.SYNC_START, this, type, mMeID, 0, 0);
 		final Map<String, Long> userMap = new HashMap<String, Long>();
 		Cursor c = mContentResolver.query(RawContactsEntity.CONTENT_URI, new String[]{RawContactsEntity._ID, RawContactsEntity.DATA1}, RawContactsEntity.MIMETYPE + "='vnd.android.cursor.item/vnd.jp.mixi.profile'", null, null);
 		while(c.moveToNext()){
@@ -435,6 +437,7 @@ public class MixiManager implements Manager {
 		syncVoice(userMap);
 		syncFriendsVoice(userMap);
 		syncUpdates(userMap);
+		mTimeLineManager.notifyOnSyncStateChange(Listener.SYNC_END, this, type, mMeID, 0, 0);
 	}
 
 	private void syncMessageInbox(final Map<String, Long> userMap) {
