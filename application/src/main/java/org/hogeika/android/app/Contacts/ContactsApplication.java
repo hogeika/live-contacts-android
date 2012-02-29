@@ -1,5 +1,6 @@
 package org.hogeika.android.app.Contacts;
 
+import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -20,6 +21,7 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.os.SystemClock;
 import android.preference.PreferenceManager;
 import android.util.Log;
 
@@ -32,6 +34,7 @@ public class ContactsApplication extends Application {
 	public static final int REQUEST_LOGOUT_GMAIL = 6; // Don't use
 
 	private static final int NOTIFICATION_ID_SYNC = 1;
+	private static final int NOTIFICATION_ID_ERROR = 10;
 
 	private NotificationManager mNotificationManager;
 	
@@ -151,6 +154,9 @@ public class ContactsApplication extends Application {
 							}
 							break;
 						case Listener.SYNC_ERROR:
+							Notification error_notif = new Notification(android.R.drawable.stat_notify_sync, "Start sync.", System.currentTimeMillis());
+							error_notif.setLatestEventInfo(ContactsApplication.this, "ContactFlow", "Sync Error (" + manager.getName() + ")", null);
+							mNotificationManager.notify(NOTIFICATION_ID_ERROR + (int)(SystemClock.uptimeMillis()/1000), error_notif);
 							break;
 						}
 					}

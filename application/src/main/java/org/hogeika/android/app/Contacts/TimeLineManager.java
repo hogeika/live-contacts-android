@@ -1191,7 +1191,13 @@ public class TimeLineManager {
 				for(Manager manager : mManagerMap.values()){
 					if(manager.getActiveAccountCount() > 0){
 						notifyOnSyncStateChange(Listener.SYNC_START, manager, type, null, 0, 0);
-						manager.sync(type);
+						try{
+							manager.sync(type);
+						}catch(Throwable e){
+							Log.e("TimeLineManager", "Error occor while syncing.");
+							Log.e("TimeLineManager", e.toString());
+							notifyOnSyncStateChange(Listener.SYNC_ERROR, manager, type, null, 0, 0);
+						}
 						notifyOnSyncStateChange(Listener.SYNC_END, manager, type, null, 0, 0);
 						notifyOnUpdate(); // Ugh! check update
 					}
