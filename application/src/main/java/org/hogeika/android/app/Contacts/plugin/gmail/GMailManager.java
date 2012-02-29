@@ -265,7 +265,7 @@ public class GMailManager implements Manager {
 				}
 			}else{
 				int end = folder.getMessageCount();
-				int start = end - MAX_MESSAGES;
+				int start = end - MAX_MESSAGES + 1;
 				if(start < 1) start = 1;
 				messages = folder.getMessages(start,end);
 			}
