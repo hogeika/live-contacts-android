@@ -952,7 +952,8 @@ public class TimeLineManager {
 				values.put(TimeLineColumns.RAW_CONTACT_ID, user.getRawContactId());
 				values.put(TimeLineColumns.MESSAGE_ID, msg_id);
 				mDB.insert(TimeLineColumns.TABLE_NAME, null, values);
-			}		
+			}
+			isUpdated = true;
 		}finally{
 			c.close();
 		}
@@ -988,6 +989,7 @@ public class TimeLineManager {
 			if(msg_id == -1){
 				return false;
 			}
+			isUpdated = true;
 		}finally{
 			c.close();
 		}
@@ -1152,6 +1154,7 @@ public class TimeLineManager {
 		mListeners.remove(listener);
 	}
 	
+	private boolean isUpdated = true;
 	public void notifyOnUpdate(){
 		mHandler.post(new Runnable() {
 			@Override
@@ -1159,6 +1162,7 @@ public class TimeLineManager {
 				for(Listener listener : mListeners){
 					listener.onUpdate();
 				}
+				isUpdated = false;
 			}
 		});
 	}
@@ -1185,13 +1189,15 @@ public class TimeLineManager {
 			public void run() {
 				notifyOnSyncStateChange(Listener.SYNC_START, null, type, null, 0, 0);
 				for(Manager manager : mManagerMap.values()){
-					notifyOnSyncStateChange(Listener.SYNC_START, manager, type, null, 0, 0);
-					manager.sync(type);
-					notifyOnSyncStateChange(Listener.SYNC_END, manager, type, null, 0, 0);
+					if(manager.getActiveAccountCount() > 0){
+						notifyOnSyncStateChange(Listener.SYNC_START, manager, type, null, 0, 0);
+						manager.sync(type);
+						notifyOnSyncStateChange(Listener.SYNC_END, manager, type, null, 0, 0);
+						notifyOnUpdate(); // Ugh! check update
+					}
 				}
 				mIsSyncing = false;
 				notifyOnSyncStateChange(Listener.SYNC_END, null, type, null, 0, 0);
-				notifyOnUpdate();
 			}
 		}).start();
 	}
@@ -1227,6 +1233,7 @@ public class TimeLineManager {
 			public void run() {
 				internalClear();
 				purgeDB();
+				isUpdated = true;
 				if(listener != null){
 					listener.onComplete();
 				}
@@ -1248,6 +1255,7 @@ public class TimeLineManager {
 				for(Manager manager : mManagerMap.values()){
 					manager.clear();
 				}
+				isUpdated = true;
 				sync(Manager.SYNC_TYPE_LIGHT);
 				if(listener != null){
 					listener.onComplete();
