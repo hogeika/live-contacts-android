@@ -132,10 +132,10 @@ public class ContactsApplication extends Application {
 							if(manager != null){
 								sync_message +=  manager.getName();
 								if(accountName != null){
-									sync_message += "(" + accountName + ")";
 									if(total > 0){
 										sync_message += "["+count+"/"+total+"]";
 									}
+									sync_message += "(" + accountName + ")";
 								}
 							}
 							notification.setLatestEventInfo(ContactsApplication.this, "ContactFlow", sync_message, pi);
