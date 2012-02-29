@@ -175,9 +175,48 @@ public class TimeLineManager {
 		long diff = RETENTION_PERIOD * 24 * 60 * 60 * 1000L;
 		String whereClause = TimeStampColumns.TIMESTAMP + " < ?";
 		String[] whereArgs = new String[]{Long.toString(currentTime - diff)};
-				
+		
+/*
+		{
+//			Cursor c = mDB.query(TimeLineColumns.TABLE_NAME, null, TimeLineColumns.MESSAGE_ID + "=(SELECT " + TimeLineColumns.MESSAGE_ID + " FROM contacts_timeline WHERE contacts_timeline.time_stamp < ?)", whereArgs, null, null, null);
+			Cursor c = mDB.rawQuery("SELECT * FROM " + TimeLineColumns.TABLE_NAME + " WHERE " + TimeLineColumns.MESSAGE_ID + "=(SELECT " + MessageColumns.TABLE_NAME + "." + MessageColumns._ID + " FROM " + MessageColumns.TABLE_NAME + " WHERE " + MessageColumns.TABLE_NAME + "." + MessageColumns.TIMESTAMP + "<?)", whereArgs);
+//			Cursor c = mDB.rawQuery("SELECT " + TimeLineColumns.MESSAGE_ID + " FROM contacts_timeline WHERE contacts_timeline.time_stamp < ?", whereArgs);
+//			Cursor c = mDB.query("contacts_timeline", null, whereClause, whereArgs, null, null, null);
+//			Cursor c = mDB.query("contacts_timeline", null, null, null, null, null, null);
+			if(c.moveToFirst()){
+//				int msgIdColumn = c.getColumnIndex(TimeLineColumns.MESSAGE_ID);
+				int msgIdColumn = c.getColumnIndex(MessageColumns._ID);
+//				int timestampColumn = c.getColumnIndex(TimeStampColumns.TIMESTAMP);
+//				int summaryColumn = c.getColumnIndex(MessageColumns.SUMMARY);
+				int count = 0;
+				do{
+					long msgId = c.getLong(msgIdColumn);
+//					long timestamp = c.getLong(timestampColumn);
+//					String check = "OK";
+//					String summary = c.getString(summaryColumn);
+//					if(timestamp < (currentTime - diff)){
+//						check = "delete";
+//						count ++;
+//					}
+					count ++;
+					Log.d("TimeLineManager", "msgId=" + msgId + " tiemstamp=" + timestamp + " check=" + check + " summary=" + summary);
+				}while(c.moveToNext());
+				Log.d("TimeLineManager", "may delete " + count);
+			}
+		}
+*/
+
 		int count = 0;
-		count += mDB.delete(TimeLineColumns.TABLE_NAME, TimeLineColumns.TABLE_NAME + "." + TimeLineColumns.MESSAGE_ID + "=(SELECT " + TimeLineColumns.TABLE_NAME +"." + TimeLineColumns.MESSAGE_ID + " FROM contacts_timeline WHERE " + whereClause +")", whereArgs);
+
+		// Ugh! because SQLite sub query delete is not work well. 
+		Cursor c = mDB.query(MessageColumns.TABLE_NAME, new String[]{MessageColumns._ID}, whereClause, whereArgs, null, null, null);
+		if(c.moveToFirst()){
+			do {
+				long msgId = c.getLong(0);
+				count += mDB.delete(TimeLineColumns.TABLE_NAME, TimeLineColumns.MESSAGE_ID + "=?", new String[]{Long.toString(msgId)});
+			}while(c.moveToNext());
+		}
+//		count += mDB.delete(TimeLineColumns.TABLE_NAME, TimeLineColumns.TABLE_NAME + "." + TimeLineColumns.MESSAGE_ID + "=(SELECT " + TimeLineColumns.TABLE_NAME +"." + TimeLineColumns.MESSAGE_ID + " FROM contacts_timeline WHERE " + whereClause +")", whereArgs);
 		count += mDB.delete(MessageColumns.TABLE_NAME, whereClause, whereArgs);
 		count += mDB.delete(ActivityStreamColumns.TABLE_NAME, whereClause, whereArgs);
 		Log.d(TAG, "Delete " + count + " rows.");
@@ -1156,6 +1195,9 @@ public class TimeLineManager {
 	
 	private boolean isUpdated = true;
 	public void notifyOnUpdate(){
+		if(!isUpdated){
+			return;
+		}
 		mHandler.post(new Runnable() {
 			@Override
 			public void run() {
