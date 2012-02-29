@@ -11,6 +11,8 @@ public abstract class AbstractTimeLiveViewActivity extends Activity {
 	private static final int DIALOG_PROGRESS = 3;
 
 	private ContactsApplication mApplication;
+
+	protected abstract void onTimeLineUpdated();
 	
 	private final TimeLineManager.Listener mListener = new TimeLineManager.Listener() {
 		@Override
@@ -27,22 +29,15 @@ public abstract class AbstractTimeLiveViewActivity extends Activity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		mApplication = (ContactsApplication)getApplication();
-	}
-
-	protected abstract void onTimeLineUpdated();
-	
-	@Override
-	protected void onResume() {
-		super.onResume();
 		mApplication.getTimeLineManager().addListener(mListener);
 	}
 
 	@Override
-	protected void onPause() {
+	protected void onDestroy() {
 		mApplication.getTimeLineManager().removeListener(mListener);
-		super.onPause();
+		super.onDestroy();
 	}
-	
+
 	@Override
 	protected Dialog onCreateDialog(int id) {
 		switch(id){
