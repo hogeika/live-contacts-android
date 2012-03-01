@@ -44,11 +44,6 @@ public class TimeLineManager {
 		static final String CONTACT_ID = "contact_id";
 		static final String LOOKUP_KEY = "lookup";
 		static final String RAW_CONTACT_ID = "raw_contact_id";
-		static final String MESSAGE_ID = "message_id";
-	}
-	private interface MessageColumns extends BaseColumns {
-		static final String TABLE_NAME = "message2";
-		
 		static final String SOURCE = "source";
 		static final String SOURCE_ACCOUNT = "source_account";
 		static final String SOURCE_TYPE = "source_type";
@@ -101,18 +96,14 @@ public class TimeLineManager {
 				TimeLineColumns.CONTACT_ID + " bigint not null," + 
 				TimeLineColumns.LOOKUP_KEY + " text not null," +
 				TimeLineColumns.RAW_CONTACT_ID + " bigint not null," +
-				TimeLineColumns.MESSAGE_ID + " integer not null," +
-				TimeLineColumns.TIMESTAMP + " bigint not null" +
-				");");
-		db.execSQL("CREATE TABLE IF NOT EXISTS " + MessageColumns.TABLE_NAME + " (" +
-				MessageColumns._ID + "  integer primary key autoincrement," +
-				MessageColumns.SOURCE + " text not null," +
-				MessageColumns.SOURCE_ACCOUNT + " text not null," +
-				MessageColumns.SOURCE_TYPE + " text not null," +
-				MessageColumns.ORIGINAL_ID + " text not null unique," +
-				MessageColumns.DIRECTION + " int not null," +
-				MessageColumns.TITLE + " text," +
-				MessageColumns.SUMMARY + " text" +
+				TimeLineColumns.TIMESTAMP + " bigint not null," +
+				TimeLineColumns.SOURCE + " text not null," +
+				TimeLineColumns.SOURCE_ACCOUNT + " text not null," +
+				TimeLineColumns.SOURCE_TYPE + " text not null," +
+				TimeLineColumns.ORIGINAL_ID + " text not null unique," +
+				TimeLineColumns.DIRECTION + " int not null," +
+				TimeLineColumns.TITLE + " text," +
+				TimeLineColumns.SUMMARY + " text" +
 				");");
 		db.execSQL("CREATE TABLE IF NOT EXISTS " + ActivityStreamColumns.TABLE_NAME + " (" +
 				ActivityStreamColumns._ID + "  integer primary key autoincrement," +
@@ -126,11 +117,9 @@ public class TimeLineManager {
 				ActivityStreamColumns.SUMMARY + " text," +
 				ActivityStreamColumns.URL + " text" +
 				");");
-		db.execSQL("CREATE VIEW IF NOT EXISTS contacts_timeline AS SELECT *,message2.* FROM timeline2 INNER JOIN message ON timeline2.message_id=message2._ID;");
 	}
 	
 	private void dropTables(SQLiteDatabase db){
-		db.execSQL("drop table if exists " + MessageColumns.TABLE_NAME + ";");
 		db.execSQL("drop table if exists " + TimeLineColumns.TABLE_NAME + ";");
 		db.execSQL("drop table if exists " + ActivityStreamColumns.TABLE_NAME + ";");
 	}
@@ -169,22 +158,8 @@ public class TimeLineManager {
 		mContentRsolver = context.getContentResolver();
 		mHandler = new Handler(mContext.getMainLooper());
 		
-		mDB.execSQL("drop view if exists contacts_timeline;");
-		mDB.execSQL("CREATE VIEW IF NOT EXISTS contacts_timeline AS SELECT *,message2.* FROM timeline2 INNER JOIN message2 ON timeline2.message_id=message2._ID;");
-//		mDB.execSQL("CREATE VIEW IF NOT EXISTS contacts_timeline AS SELECT *,message2.* FROM timeline2,message2 WHERE timeline2.message_id=message2._ID;");
-//		mDB.execSQL("CREATE VIEW IF NOT EXISTS contacts_timeline AS SELECT *,raw_contacts_cache.* FROM timeline INNER JOIN raw_contacts_cache ON timeline.raw_contact_id=raw_contacts_cache.raw_contact_id;");
-//		mDB.execSQL("CREATE VIEW IF NOT EXISTS contacts_timeline AS SELECT *,raw_contacts_cache.* FROM timeline,raw_contacts_cache WHERE timeline.raw_contact_id=raw_contacts_cache.raw_contact_id;");
-//		{
-//			Cursor c = mDB.query("contacts_timeline", null, null, null, null, null, null);
-//			if(c.moveToFirst()){
-//				do{
-//					int idColumn = c.getColumnIndex(TimeLineColumns._ID);
-//					Log.d("Debug", "id="+c.getLong(idColumn));
-//				}while(c.moveToNext());
-//			}
-//		}
-		updateLookupKey(mDB);
 		purgeDB(); // purge old data
+		updateLookupKey(mDB);
 	}
 	
 	private void updateLookupKey(SQLiteDatabase db){
@@ -217,48 +192,7 @@ public class TimeLineManager {
 		String whereClause = TimeStampColumns.TIMESTAMP + " < ?";
 		String[] whereArgs = new String[]{Long.toString(currentTime - diff)};
 		
-/*
-		{
-//			Cursor c = mDB.query(TimeLineColumns.TABLE_NAME, null, TimeLineColumns.MESSAGE_ID + "=(SELECT " + TimeLineColumns.MESSAGE_ID + " FROM contacts_timeline WHERE contacts_timeline.time_stamp < ?)", whereArgs, null, null, null);
-			Cursor c = mDB.rawQuery("SELECT * FROM " + TimeLineColumns.TABLE_NAME + " WHERE " + TimeLineColumns.MESSAGE_ID + "=(SELECT " + MessageColumns.TABLE_NAME + "." + MessageColumns._ID + " FROM " + MessageColumns.TABLE_NAME + " WHERE " + MessageColumns.TABLE_NAME + "." + MessageColumns.TIMESTAMP + "<?)", whereArgs);
-//			Cursor c = mDB.rawQuery("SELECT " + TimeLineColumns.MESSAGE_ID + " FROM contacts_timeline WHERE contacts_timeline.time_stamp < ?", whereArgs);
-//			Cursor c = mDB.query("contacts_timeline", null, whereClause, whereArgs, null, null, null);
-//			Cursor c = mDB.query("contacts_timeline", null, null, null, null, null, null);
-			if(c.moveToFirst()){
-//				int msgIdColumn = c.getColumnIndex(TimeLineColumns.MESSAGE_ID);
-				int msgIdColumn = c.getColumnIndex(MessageColumns._ID);
-//				int timestampColumn = c.getColumnIndex(TimeStampColumns.TIMESTAMP);
-//				int summaryColumn = c.getColumnIndex(MessageColumns.SUMMARY);
-				int count = 0;
-				do{
-					long msgId = c.getLong(msgIdColumn);
-//					long timestamp = c.getLong(timestampColumn);
-//					String check = "OK";
-//					String summary = c.getString(summaryColumn);
-//					if(timestamp < (currentTime - diff)){
-//						check = "delete";
-//						count ++;
-//					}
-					count ++;
-					Log.d("TimeLineManager", "msgId=" + msgId + " tiemstamp=" + timestamp + " check=" + check + " summary=" + summary);
-				}while(c.moveToNext());
-				Log.d("TimeLineManager", "may delete " + count);
-			}
-		}
-*/
-
 		int count = 0;
-
-		// Ugh! because SQLite sub query delete is not work well. 
-		Cursor c = mDB.query(TimeLineColumns.TABLE_NAME, new String[]{TimeLineColumns.MESSAGE_ID}, whereClause, whereArgs, null, null, null);
-		if(c.moveToFirst()){
-			do {
-				long msgId = c.getLong(0);
-				count += mDB.delete(MessageColumns.TABLE_NAME, TimeLineColumns._ID + "=?", new String[]{Long.toString(msgId)});
-			}while(c.moveToNext());
-		}
-		c.close();
-//		count += mDB.delete(TimeLineColumns.TABLE_NAME, TimeLineColumns.TABLE_NAME + "." + TimeLineColumns.MESSAGE_ID + "=(SELECT " + TimeLineColumns.TABLE_NAME +"." + TimeLineColumns.MESSAGE_ID + " FROM contacts_timeline WHERE " + whereClause +")", whereArgs);
 		count += mDB.delete(TimeLineColumns.TABLE_NAME, whereClause, whereArgs);
 		count += mDB.delete(ActivityStreamColumns.TABLE_NAME, whereClause, whereArgs);
 		Log.d(TAG, "Delete " + count + " rows.");
@@ -859,7 +793,6 @@ public class TimeLineManager {
 		private final int mContactIdColumn;
 		private final int mLookupColumn;
 		private final int mTimestampColumn;
-		private final int mMessageIdColumn;
 
 		int sourceColumn;
 		int sourceAccountColumn;
@@ -878,15 +811,14 @@ public class TimeLineManager {
 			mContactIdColumn = mCursor.getColumnIndex(TimeLineColumns.CONTACT_ID);
 			mLookupColumn = mCursor.getColumnIndex(TimeLineColumns.LOOKUP_KEY);
 			mTimestampColumn = mCursor.getColumnIndex(TimeLineColumns.TIMESTAMP);
-			mMessageIdColumn = mCursor.getColumnIndex(TimeLineColumns.MESSAGE_ID);
 
-			sourceColumn = mCursor.getColumnIndex(MessageColumns.SOURCE);
-			sourceAccountColumn =mCursor.getColumnIndex(MessageColumns.SOURCE_ACCOUNT);
-			sourceTypeColumn = mCursor.getColumnIndex(MessageColumns.SOURCE_TYPE);
-			originalIdColumn = mCursor.getColumnIndex(MessageColumns.ORIGINAL_ID);
-			directionColumn = mCursor.getColumnIndex(MessageColumns.DIRECTION);
-			titleColumn = mCursor.getColumnIndex(MessageColumns.TITLE);
-			summaryColumn = mCursor.getColumnIndex(MessageColumns.SUMMARY);
+			sourceColumn = mCursor.getColumnIndex(TimeLineColumns.SOURCE);
+			sourceAccountColumn =mCursor.getColumnIndex(TimeLineColumns.SOURCE_ACCOUNT);
+			sourceTypeColumn = mCursor.getColumnIndex(TimeLineColumns.SOURCE_TYPE);
+			originalIdColumn = mCursor.getColumnIndex(TimeLineColumns.ORIGINAL_ID);
+			directionColumn = mCursor.getColumnIndex(TimeLineColumns.DIRECTION);
+			titleColumn = mCursor.getColumnIndex(TimeLineColumns.TITLE);
+			summaryColumn = mCursor.getColumnIndex(TimeLineColumns.SUMMARY);
 		}
 
 		@Override
@@ -907,32 +839,18 @@ public class TimeLineManager {
 
 		private TimeLineItem getTimeLineItem(){
 			if(mCurrentTimeLineItem != null) return mCurrentTimeLineItem;
-			TimeLineUser user = getTimeLineUser();
-			
+			TimeLineUser user = getTimeLineUser();		
 			Set<TimeLineUser> users = new HashSet<TimeLineUser>();
 			users.add(user);
+			
 			long timeStamp = mCursor.getLong(mTimestampColumn);
-//			long msgId = mCursor.getLong(mMessageIdColumn);
-//			Cursor c = mDB.query(MessageColumns.TABLE_NAME, null, MessageColumns._ID + "=?", new String[]{Long.toString(msgId)}, null, null, null);
-//			if(!c.moveToFirst()){
-//				return null;
-//			}
-			Cursor c = mCursor;
-//			int sourceColumn = c.getColumnIndex(MessageColumns.SOURCE);
-//			int sourceAccountColumn =c.getColumnIndex(MessageColumns.SOURCE_ACCOUNT);
-//			int sourceTypeColumn = c.getColumnIndex(MessageColumns.SOURCE_TYPE);
-//			int originalIdColumn = c.getColumnIndex(MessageColumns.ORIGINAL_ID);
-//			int directionColumn = c.getColumnIndex(MessageColumns.DIRECTION);
-//			int titleColumn = c.getColumnIndex(MessageColumns.TITLE);
-//			int summaryColumn = c.getColumnIndex(MessageColumns.SUMMARY);
-			String source = c.getString(sourceColumn);
-			String sourceAccount = c.getString(sourceAccountColumn);
-			String sourceType = c.getString(sourceTypeColumn);
-			String originalId = c.getString(originalIdColumn);
-			int direction = c.getInt(directionColumn);
-			String title = c.getString(titleColumn);
-			String summary = c.getString(summaryColumn);
-//			c.close();
+			String source = mCursor.getString(sourceColumn);
+			String sourceAccount = mCursor.getString(sourceAccountColumn);
+			String sourceType = mCursor.getString(sourceTypeColumn);
+			String originalId = mCursor.getString(originalIdColumn);
+			int direction = mCursor.getInt(directionColumn);
+			String title = mCursor.getString(titleColumn);
+			String summary = mCursor.getString(summaryColumn);
 			mCurrentTimeLineItem = new TimeLineItemImpl(source, timeStamp, users, sourceAccount, sourceType, originalId, direction, title, summary);
 			return mCurrentTimeLineItem;
 		}
@@ -1002,15 +920,12 @@ public class TimeLineManager {
 	
 	public synchronized TimeLineCursor getTimeLineCursor(Uri contactLookupUri){
 		String lookupKey  = contactLookupUri.getPathSegments().get(2);
-		Cursor cursor = mDB.query("contacts_timeline", null, TimeLineColumns.LOOKUP_KEY + "=?", new String[]{lookupKey}, null, null, TimeLineColumns.TIMESTAMP + " DESC");
-//		Cursor cursor = mDB.rawQuery("SELECT * FROM timeline2 WHERE lookup=? ORDER BY time_stamp DESC", new String[]{lookupKey});
+		Cursor cursor = mDB.query(TimeLineColumns.TABLE_NAME, null, TimeLineColumns.LOOKUP_KEY + "=?", new String[]{lookupKey}, null, null, TimeLineColumns.TIMESTAMP + " DESC");
 		return new TimeLineCursorImpl(cursor);
 	}
 	
 	public synchronized TimeLineCursor getRecentContactsCursor(){
-		Cursor cursor = mDB.rawQuery("SELECT * FROM contacts_timeline as x WHERE time_stamp=(SELECT MAX(time_stamp) FROM contacts_timeline WHERE lookup=x.lookup) ORDER BY time_stamp DESC", null);
-//		Cursor cursor = mDB.rawQuery("SELECT * FROM contacts_timeline ORDER BY time_stamp DESC", null);
-//		Cursor cursor = mDB.rawQuery("SELECT * FROM timeline2 as x WHERE time_stamp=(SELECT MAX(time_stamp) FROM timeline2 WHERE lookup=x.lookup) ORDER BY time_stamp DESC", null);
+		Cursor cursor = mDB.query(TimeLineColumns.TABLE_NAME + " AS x", null, TimeLineColumns.TIMESTAMP + "=(SELECT MAX(" + TimeLineColumns.TIMESTAMP +") FROM " + TimeLineColumns.TABLE_NAME + " WHERE x." + TimeLineColumns.LOOKUP_KEY + "=" + TimeLineColumns.LOOKUP_KEY + ")", null, null, null, TimeLineColumns.TIMESTAMP + " DESC");
 		return new TimeLineCursorImpl(cursor);
 	}
 	
@@ -1019,49 +934,40 @@ public class TimeLineManager {
 		long diff = RETENTION_PERIOD * 24 * 60 * 60 * 1000L;
 		if(item.getTimeStamp() < (currentTime - diff)) return false;
 		
+		String originalId = item.mOriginalId;
+		String sourceName = item.getSource().getName();
+		mDB.delete(TimeLineColumns.TABLE_NAME, TimeLineColumns.ORIGINAL_ID + "=? and " +  TimeLineColumns.SOURCE + "=?", new String[]{originalId, sourceName});
+		
 		ContentValues values = new ContentValues();
-		values.put(MessageColumns.SOURCE, item.getSource().getName());
-		values.put(MessageColumns.SOURCE_ACCOUNT, item.mSourceAccount);
-		values.put(MessageColumns.SOURCE_TYPE, item.mSourceType);
-		values.put(MessageColumns.ORIGINAL_ID, item.mOriginalId);
-		values.put(MessageColumns.DIRECTION, item.getDirection());
-		values.put(MessageColumns.TITLE, item.getTitle());
-		values.put(MessageColumns.SUMMARY, item.getSummary());
+		values.put(TimeLineColumns.SOURCE, sourceName);
+		values.put(TimeLineColumns.SOURCE_ACCOUNT, item.mSourceAccount);
+		values.put(TimeLineColumns.SOURCE_TYPE, item.mSourceType);
+		values.put(TimeLineColumns.ORIGINAL_ID, originalId);
+		values.put(TimeLineColumns.DIRECTION, item.getDirection());
+		values.put(TimeLineColumns.TITLE, item.getTitle());
+		values.put(TimeLineColumns.SUMMARY, item.getSummary());
 
-		long msg_id = -1;
-		Cursor c = mDB.query(MessageColumns.TABLE_NAME, new String[]{MessageColumns._ID}, MessageColumns.ORIGINAL_ID + "=?", new String[]{item.mOriginalId},null,null,null);
-		try{
-			if(c.getCount() > 0){
-				c.moveToFirst();
-				msg_id = c.getLong(0);
-				mDB.update(MessageColumns.TABLE_NAME, values, MessageColumns.ORIGINAL_ID + " = ?", new String[]{item.mOriginalId});
-			}else{
-				msg_id = mDB.insert(MessageColumns.TABLE_NAME, null, values);
+		boolean flag = true;
+		for(TimeLineUser user : item.getUsers()){
+			values.put(TimeLineColumns.CONTACT_ID, user.getContactLookupKey());
+			values.put(TimeLineColumns.LOOKUP_KEY, user.getContactLookupKey());
+			values.put(TimeLineColumns.RAW_CONTACT_ID, user.getRawContactId());
+			values.put(TimeLineColumns.TIMESTAMP, item.getTimeStamp());
+			long id = mDB.insert(TimeLineColumns.TABLE_NAME, null, values);
+			if(id == -1){
+				flag = false;
 			}
-			if(msg_id == -1){
-				return false;
-			}
-			mDB.delete(TimeLineColumns.TABLE_NAME, TimeLineColumns.MESSAGE_ID + "=?", new String[]{Long.toString(msg_id)});
-			for(TimeLineUser user : item.getUsers()){
-				values.clear();
-				values.put(TimeLineColumns.CONTACT_ID, user.getContactLookupKey());
-				values.put(TimeLineColumns.LOOKUP_KEY, user.getContactLookupKey());
-				values.put(TimeLineColumns.RAW_CONTACT_ID, user.getRawContactId());
-				values.put(TimeLineColumns.MESSAGE_ID, msg_id);
-				values.put(TimeLineColumns.TIMESTAMP, item.getTimeStamp());
-				mDB.insert(TimeLineColumns.TABLE_NAME, null, values);
-			}
-			isUpdated = true;
-		}finally{
-			c.close();
 		}
-		return true;
+		isUpdated = true;
+		return flag;
 	}
 	
 	public synchronized boolean addActivityStreamItem(Manager source, long timeStamp, long rawContactId, String sourceAccount, String sourceType, String originalId, String summary, String url){
 		TimeLineUser user = newTimeLineUser(rawContactId);
 		String sourceName = source.getName();
 		
+		mDB.delete(ActivityStreamColumns.TABLE_NAME, ActivityStreamColumns.ORIGINAL_ID + "=? and " +  ActivityStreamColumns.SOURCE + "=?", new String[]{originalId, sourceName});
+
 		ContentValues values = new ContentValues();
 		values.put(ActivityStreamColumns.RAW_CONTACT_ID, user.getRawContactId());
 		values.put(ActivityStreamColumns.LOOKUP_KEY, user.getContactLookupKey());
@@ -1073,24 +979,11 @@ public class TimeLineManager {
 		values.put(ActivityStreamColumns.SUMMARY, summary);
 		values.put(ActivityStreamColumns.URL, url);
 
-		long msg_id = -1;
-		Cursor c = mDB.query(ActivityStreamColumns.TABLE_NAME, new String[]{ActivityStreamColumns._ID}, ActivityStreamColumns.ORIGINAL_ID + "=? and " +  ActivityStreamColumns.SOURCE + "=?", new String[]{originalId, sourceName},null,null,null);
-		try {
-			if(c.getCount() > 0){
-				c.moveToFirst();
-				msg_id = c.getLong(0);
-				mDB.update(ActivityStreamColumns.TABLE_NAME, values, ActivityStreamColumns._ID + " = ?", new String[]{Long.toString(msg_id)});
-				return true;
-			}else{
-				msg_id = mDB.insert(ActivityStreamColumns.TABLE_NAME, null, values);
-			}
-			if(msg_id == -1){
-				return false;
-			}
-			isUpdated = true;
-		}finally{
-			c.close();
+		long id = mDB.insert(ActivityStreamColumns.TABLE_NAME, null, values);
+		if(id == -1){
+			return false;
 		}
+		isUpdated = true;
 		return true;
 	}
 
