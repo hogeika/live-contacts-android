@@ -6,12 +6,10 @@
 	<parent>
 		<groupId>org.hogeika.android.app</groupId>
 		<artifactId>Contacts-parent</artifactId>
-		<version>0.0.3-SNAPSHOT</version>
+		<version>0.1.0</version>
 	</parent>
 
-	<groupId>org.hogeika.android.app</groupId>
 	<artifactId>Contacts</artifactId>
-	<version>0.0.3-SNAPSHOT</version>
 	<packaging>apk</packaging>
 	<name>Contacts - Application</name>
 
