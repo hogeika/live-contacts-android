@@ -35,6 +35,9 @@ import android.util.Log;
 public class TimeLineManager {
 	private static final String TAG = "TimeLineManager";
 
+	private static final int RETENTION_PERIOD = 30;
+
+
 	private interface TimeStampColumns {
 		static final String TIMESTAMP = "time_stamp";
 	}
@@ -80,14 +83,47 @@ public class TimeLineManager {
 		@Override
 		public void onUpgrade(SQLiteDatabase db, int oldVer, int newVer) {
 			if(oldVer <= 1){
-				// ToDo
-				db.execSQL("DROP VIEW IF EXISTS contacts_timeline;");
-				db.execSQL("CREATE VIEW IF NOT EXISTS contacts_timeline AS SELECT *,message.* FROM timeline INNER JOIN message ON timeline.message_id=message._ID;");
+				createTables(db);
+				
+				db.execSQL("DROP VIEW IF EXISTS tmp_timeline;");
+				db.execSQL("CREATE VIEW IF NOT EXISTS tmp_timeline AS SELECT *,message.* FROM timeline INNER JOIN message ON timeline.message_id=message._ID;");
+				Cursor c = db.query("tmp_timeline", null, null, null, null, null, null);
+				if(c.moveToFirst()){
+					int rawContactIdColumn = c.getColumnIndex("raw_contact_id");
+					int timelineCoumn = c.getColumnIndex("time_stamp");
+					int sourceColumn = c.getColumnIndex("source");
+					int sourceAccountColumn =c.getColumnIndex("source_account");
+					int sourceTypeColumn = c.getColumnIndex("source_type");
+					int originalIdColumn = c.getColumnIndex("original_id");
+					int directionColumn = c.getColumnIndex("direction");
+					int titleColumn = c.getColumnIndex("title");
+					int summaryColumn = c.getColumnIndex("summary");
+
+					do {
+						long rawContactId = c.getLong(rawContactIdColumn);
+						TimeLineUser user = newTimeLineUser(rawContactId);
+						Set<TimeLineUser> users = new HashSet<TimeLineUser>();
+						users.add(user);
+
+						long timeStamp = c.getLong(timelineCoumn);
+						String sourceName = c.getString(sourceColumn);
+						String sourceAccount = c.getString(sourceAccountColumn);
+						String sourceType = c.getString(sourceTypeColumn);
+						String originalId = c.getString(originalIdColumn);
+						int direction = c.getInt(directionColumn);
+						String title = c.getString(titleColumn);
+						String summary = c.getString(summaryColumn);
+
+						TimeLineItemImpl item = new TimeLineItemImpl(sourceName, timeStamp, users, sourceAccount, sourceType, originalId, direction, title, summary);
+						addItem(db, item);
+					}while(c.moveToNext());
+				}
+				db.execSQL("DROP VIEW tmp_timeline;");
+				db.execSQL("DROP TABLE timeline;");
+				db.execSQL("DROP TABLE message;");
 			}
 		}
 	}
-
-	private static final int RETENTION_PERIOD = 30;
 
 	private void createTables(SQLiteDatabase db){
 		db.execSQL("CREATE TABLE IF NOT EXISTS " + TimeLineColumns.TABLE_NAME + " (" +
@@ -151,10 +187,11 @@ public class TimeLineManager {
 	
 	protected TimeLineManager(Context context){
 		mContext = context;
-		mDBHelper = new TimeLineDB(context);
-		mDB = mDBHelper.getWritableDatabase();
 		mContentRsolver = context.getContentResolver();
 		mHandler = new Handler(mContext.getMainLooper());
+		
+		mDBHelper = new TimeLineDB(context);
+		mDB = mDBHelper.getWritableDatabase();
 		
 		purgeDB(); // purge old data
 		updateLookupKey();
@@ -855,7 +892,7 @@ public class TimeLineManager {
 		@Override
 		protected void invalidateCache() {
 			mCurrentTimeLineUser = null;
-			mCurrentTimeLineItem = null;
+			mCurrentTimeLineItem = null;	
 		}
 
 		private TimeLineUser getTimeLineUser() {
@@ -957,14 +994,18 @@ public class TimeLineManager {
 		return new TimeLineCursorImpl(cursor);
 	}
 	
-	protected synchronized boolean addItem(TimeLineItemImpl item){
+	protected boolean addItem(TimeLineItemImpl item){
+		return addItem(mDB,item);
+	}
+	
+	private synchronized boolean addItem(SQLiteDatabase db, TimeLineItemImpl item){
 		long currentTime = System.currentTimeMillis();
 		long diff = RETENTION_PERIOD * 24 * 60 * 60 * 1000L;
 		if(item.getTimeStamp() < (currentTime - diff)) return false;
 		
 		String originalId = item.mOriginalId;
-		String sourceName = item.getSource().getName();
-		mDB.delete(TimeLineColumns.TABLE_NAME, TimeLineColumns.ORIGINAL_ID + "=? and " +  TimeLineColumns.SOURCE + "=?", new String[]{originalId, sourceName});
+		String sourceName = item.mSourceName;
+		db.delete(TimeLineColumns.TABLE_NAME, TimeLineColumns.ORIGINAL_ID + "=? and " +  TimeLineColumns.SOURCE + "=?", new String[]{originalId, sourceName});
 		
 		ContentValues values = new ContentValues();
 		values.put(TimeLineColumns.SOURCE, sourceName);
@@ -980,7 +1021,7 @@ public class TimeLineManager {
 			values.put(TimeLineColumns.LOOKUP_KEY, user.getContactLookupKey());
 			values.put(TimeLineColumns.RAW_CONTACT_ID, user.getRawContactId());
 			values.put(TimeLineColumns.TIMESTAMP, item.getTimeStamp());
-			long id = mDB.insert(TimeLineColumns.TABLE_NAME, null, values);
+			long id = db.insert(TimeLineColumns.TABLE_NAME, null, values);
 			if(id == -1){
 				flag = false;
 			}
