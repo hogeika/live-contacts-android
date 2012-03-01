@@ -2,7 +2,7 @@ package org.hogeika.android.app.Contacts;
 
 import java.text.DateFormat;
 
-import org.hogeika.android.app.Contacts.TimeLineManager.RecentContactsCursor;
+import org.hogeika.android.app.Contacts.TimeLineManager.TimeLineCursor;
 import org.hogeika.android.app.Contacts.TimeLineManager.TimeLineItem;
 
 import android.content.Context;
@@ -26,13 +26,13 @@ import android.widget.TextView;
 
 public class RecentSessionActivity extends AbstractTimeLiveViewActivity {
 	private class RecentContactAdapter extends ResourceCursorAdapter {
-		public RecentContactAdapter(Context context, RecentContactsCursor c) {
+		public RecentContactAdapter(Context context, TimeLineCursor c) {
 			super(context, R.layout.listitem_recent_contact, c);
 		}
 
 		@Override
 		public void bindView(View view, Context context, Cursor cursor) {
-			RecentContactsCursor c = (RecentContactsCursor) cursor;
+			TimeLineCursor c = (TimeLineCursor) cursor;
 
 			TextView contactName = (TextView) view.findViewById(R.id.TextView_contactName);
 			TextView body = (TextView) view.findViewById(R.id.TextView_body);
@@ -75,7 +75,7 @@ public class RecentSessionActivity extends AbstractTimeLiveViewActivity {
 		
 	}
 
-	private RecentContactsCursor mCursor;
+	private TimeLineCursor mCursor;
 	private RecentContactAdapter mAdapter;
 
 	@Override
