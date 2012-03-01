@@ -109,24 +109,24 @@ public class SettingActivity extends PreferenceActivity implements OnPreferenceC
 			}
 		});
 
-		p = findPreference("purge");
-		p.setOnPreferenceClickListener(new OnPreferenceClickListener() {
-			@Override
-			public boolean onPreferenceClick(Preference preference) {
-				final ProgressDialog progressDialog = new ProgressDialog(SettingActivity.this);
-				progressDialog.setCancelable(false);
-				progressDialog.setMessage("Purging..");
-				progressDialog.show();
-				mTimeLineManager.purge(new PurgeListenr() {
-					@Override
-					public void onComplete() {
-						progressDialog.dismiss();
-						finish();
-					}
-				});
-				return true;
-			}
-		});
+//		p = findPreference("purge");
+//		p.setOnPreferenceClickListener(new OnPreferenceClickListener() {
+//			@Override
+//			public boolean onPreferenceClick(Preference preference) {
+//				final ProgressDialog progressDialog = new ProgressDialog(SettingActivity.this);
+//				progressDialog.setCancelable(false);
+//				progressDialog.setMessage("Purging..");
+//				progressDialog.show();
+//				mTimeLineManager.purge(new PurgeListenr() {
+//					@Override
+//					public void onComplete() {
+//						progressDialog.dismiss();
+//						finish();
+//					}
+//				});
+//				return true;
+//			}
+//		});
 
 //		p = findPreference("quit");
 //		p.setOnPreferenceClickListener(new OnPreferenceClickListener() {
