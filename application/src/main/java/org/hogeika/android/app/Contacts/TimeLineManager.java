@@ -41,7 +41,6 @@ public class TimeLineManager {
 	private interface TimeLineColumns extends BaseColumns , TimeStampColumns {
 		static final String TABLE_NAME = "timeline2";
 		
-		static final String CONTACT_ID = "contact_id";
 		static final String LOOKUP_KEY = "lookup";
 		static final String RAW_CONTACT_ID = "raw_contact_id";
 		static final String SOURCE = "source";
@@ -93,7 +92,6 @@ public class TimeLineManager {
 	private void createTables(SQLiteDatabase db){
 		db.execSQL("CREATE TABLE IF NOT EXISTS " + TimeLineColumns.TABLE_NAME + " (" +
 				TimeLineColumns._ID + "  integer primary key autoincrement," +
-				TimeLineColumns.CONTACT_ID + " bigint not null," + 
 				TimeLineColumns.LOOKUP_KEY + " text not null," +
 				TimeLineColumns.RAW_CONTACT_ID + " bigint not null," +
 				TimeLineColumns.TIMESTAMP + " bigint not null," +
@@ -159,31 +157,72 @@ public class TimeLineManager {
 		mHandler = new Handler(mContext.getMainLooper());
 		
 		purgeDB(); // purge old data
-		updateLookupKey(mDB);
+		updateLookupKey();
+		mContentRsolver.registerContentObserver(RawContacts.CONTENT_URI, true, new ContentObserver(mHandler) {
+			@Override
+			public void onChange(boolean selfChange) {
+				super.onChange(selfChange);
+				updateLookupKey();
+				notifyOnUpdate();
+			}
+			
+		});
 	}
 	
-	private void updateLookupKey(SQLiteDatabase db){
-//		db.delete(RawContactsCacheColumns.TABLE_NAME, null, null);
-//		ContentValues values = new ContentValues();
-//		Cursor c = mContentRsolver.query(RawContacts.CONTENT_URI, new String[]{RawContacts._ID, RawContacts.CONTACT_ID}, null, null, null);
-//		if(c.moveToFirst()){
-//			do{
-//				long rawContactId = c.getLong(0);
-//				long contactId = c.getLong(1);
-////				Uri rawContactUri = ContentUris.withAppendedId(RawContacts.CONTENT_URI, rawContactId);
-////				Uri contactLookupUri = RawContacts.getContactLookupUri(mContentRsolver, rawContactUri);
-//				Uri tmpUri = Uri.withAppendedPath(Contacts.CONTENT_URI, Long.toString(contactId));
-//				Uri contactLookupUri = Contacts.getLookupUri(mContentRsolver, tmpUri);
-////				long contactId = Long.parseLong(contactLookupUri.getLastPathSegment());
-//				String lookupKey  = contactLookupUri.getPathSegments().get(2);
-//				values.clear();
-//				values.put(RawContactsCacheColumns.CONTACT_ID, contactId);
-//				values.put(RawContactsCacheColumns.RAW_CONTACT_ID, rawContactId);
-//				values.put(RawContactsCacheColumns.LOOKUP_KEY, lookupKey);
-//				db.insert(RawContactsCacheColumns.TABLE_NAME, null, values);
-//			}while(c.moveToNext());
-//		}
-//		c.close();
+	private Map<Long, TimeLineUser> mRawContactIdCache = new HashMap<Long, TimeLineUser>();
+	
+	public synchronized TimeLineUser newTimeLineUser(long rawContactId){
+		if(mRawContactIdCache.containsKey(rawContactId)){
+			return mRawContactIdCache.get(rawContactId);
+		}
+		Uri rawContactUri = ContentUris.withAppendedId(RawContacts.CONTENT_URI, rawContactId);
+		Uri contactLookupUri = RawContacts.getContactLookupUri(mContentRsolver, rawContactUri);
+		if(contactLookupUri == null){
+			return null;
+		}
+		String lookupKey  = contactLookupUri.getPathSegments().get(2);
+		TimeLineUser newUser = new TimeLineUserImpl(rawContactId, lookupKey, contactLookupUri);
+		mRawContactIdCache.put(rawContactId, newUser);
+		return newUser;
+	}
+
+
+	private synchronized void updateLookupKey(){
+		mRawContactIdCache.clear();
+
+		int count = 0;
+		ContentValues values = new ContentValues();
+		Cursor cursor = mDB.query(TimeLineColumns.TABLE_NAME, new String[]{TimeLineColumns.RAW_CONTACT_ID}, null, null, TimeLineColumns.RAW_CONTACT_ID, null, null);
+		if(cursor.moveToFirst()){
+			do {
+				long rawContactId = cursor.getLong(0);
+				TimeLineUser user = newTimeLineUser(rawContactId);
+				String lookupKey = user.getContactLookupKey();
+				
+				values.clear();
+				values.put(TimeLineColumns.LOOKUP_KEY, lookupKey);
+				count += mDB.update(TimeLineColumns.TABLE_NAME, values, TimeLineColumns.RAW_CONTACT_ID + "=? AND " + TimeLineColumns.LOOKUP_KEY + "<>?", new String[]{Long.toString(rawContactId), lookupKey});
+			}while(cursor.moveToNext());
+		}
+		cursor.close();
+		
+		cursor = mDB.query(ActivityStreamColumns.TABLE_NAME, new String[]{ActivityStreamColumns.RAW_CONTACT_ID}, null, null, ActivityStreamColumns.RAW_CONTACT_ID, null, null);
+		if(cursor.moveToFirst()){
+			do {
+				long rawContactId = cursor.getLong(0);
+				TimeLineUser user = newTimeLineUser(rawContactId);
+				String lookupKey = user.getContactLookupKey();
+				
+				values.clear();
+				values.put(ActivityStreamColumns.LOOKUP_KEY, lookupKey);
+				count += mDB.update(ActivityStreamColumns.TABLE_NAME, values, ActivityStreamColumns.RAW_CONTACT_ID + "=? AND " + ActivityStreamColumns.LOOKUP_KEY + "<>?", new String[]{Long.toString(rawContactId),lookupKey});
+			}while(cursor.moveToNext());
+		}
+		cursor.close();
+		
+		if(count > 0){
+			isUpdated = true;
+		}
 	}
 
 	private void purgeDB(){
@@ -201,6 +240,7 @@ public class TimeLineManager {
 	private void clearDB(){
 		dropTables(mDB);
 		createTables(mDB);
+		mRawContactIdCache.clear();
 	}
 	
 	public void addManager(Manager manager){
@@ -228,7 +268,6 @@ public class TimeLineManager {
 	}
 	
 	public static interface TimeLineUser extends Comparable<TimeLineUser>{
-		public long getContactId();
 		public String getContactLookupKey();
 		public long getRawContactId();
 		public Uri getContactLookupUri();
@@ -330,10 +369,6 @@ public class TimeLineManager {
 			return mBitmapIcon;
 		}
 
-		@Override
-		public long getContactId() {
-			return Long.parseLong(mLookupUri.getLastPathSegment());
-		}
 	}
 	
 	protected class TimeLineItemImpl implements TimeLineItem {
@@ -790,8 +825,6 @@ public class TimeLineManager {
 	
 	class TimeLineCursorImpl extends AbstractDelegateCursor implements TimeLineCursor {
 		private final int mRawContactIdColumn;
-		private final int mContactIdColumn;
-		private final int mLookupColumn;
 		private final int mTimestampColumn;
 
 		int sourceColumn;
@@ -808,8 +841,6 @@ public class TimeLineManager {
 		protected TimeLineCursorImpl(Cursor cursor) {
 			super(cursor);
 			mRawContactIdColumn = mCursor.getColumnIndex(TimeLineColumns.RAW_CONTACT_ID);
-			mContactIdColumn = mCursor.getColumnIndex(TimeLineColumns.CONTACT_ID);
-			mLookupColumn = mCursor.getColumnIndex(TimeLineColumns.LOOKUP_KEY);
 			mTimestampColumn = mCursor.getColumnIndex(TimeLineColumns.TIMESTAMP);
 
 			sourceColumn = mCursor.getColumnIndex(TimeLineColumns.SOURCE);
@@ -830,10 +861,7 @@ public class TimeLineManager {
 		private TimeLineUser getTimeLineUser() {
 			if(mCurrentTimeLineUser != null) return mCurrentTimeLineUser;
 			long rawContactId = mCursor.getLong(mRawContactIdColumn);
-			long contactId = mCursor.getLong(mContactIdColumn);
-			String lookupKey = mCursor.getString(mLookupColumn);
-			Uri lookupUri  = Contacts.getLookupUri(contactId, lookupKey);
-			mCurrentTimeLineUser = new TimeLineUserImpl(rawContactId, lookupKey, lookupUri);
+			mCurrentTimeLineUser = newTimeLineUser(rawContactId);
 			return mCurrentTimeLineUser;
 		}
 
@@ -949,7 +977,6 @@ public class TimeLineManager {
 
 		boolean flag = true;
 		for(TimeLineUser user : item.getUsers()){
-			values.put(TimeLineColumns.CONTACT_ID, user.getContactLookupKey());
 			values.put(TimeLineColumns.LOOKUP_KEY, user.getContactLookupKey());
 			values.put(TimeLineColumns.RAW_CONTACT_ID, user.getRawContactId());
 			values.put(TimeLineColumns.TIMESTAMP, item.getTimeStamp());
@@ -1215,7 +1242,6 @@ public class TimeLineManager {
 		new Thread(new Runnable() {
 			@Override
 			public void run() {
-				internalClear();
 				if(listener != null){
 					listener.onComplete();
 				}
@@ -1231,7 +1257,6 @@ public class TimeLineManager {
 	public synchronized void purge(final PurgeListenr listener){
 		new Thread(new Runnable() {
 			public void run() {
-				internalClear();
 				purgeDB();
 				isUpdated = true;
 				if(listener != null){
@@ -1250,7 +1275,6 @@ public class TimeLineManager {
 		new Thread(new Runnable() {
 			@Override
 			public void run() {
-				internalClear();
 				clearDB();
 				for(Manager manager : mManagerMap.values()){
 					manager.clear();
@@ -1265,33 +1289,6 @@ public class TimeLineManager {
 		}).start();
 	}
 	
-	protected synchronized void internalClear(){
-//		mRawContactIdCache.clear();
-	}
-	
-	private Map<Long, TimeLineUser> mRawContactIdCache = new HashMap<Long, TimeLineUser>();
-	
-	public synchronized TimeLineUser newTimeLineUser(long rawContactId){
-		if(mRawContactIdCache.containsKey(rawContactId)){
-			return mRawContactIdCache.get(rawContactId);
-		}
-		Uri rawContactUri = ContentUris.withAppendedId(RawContacts.CONTENT_URI, rawContactId);
-		Uri contactLookupUri = RawContacts.getContactLookupUri(mContentRsolver, rawContactUri);
-		if(contactLookupUri == null){
-			return null;
-		}
-//		Cursor c = mContentRsolver.query(contactLookupUri, new String[]{Contacts.LOOKUP_KEY}, null, null, null);
-//		if(!c.moveToFirst()){
-//			return null;
-//		}
-//		String lookupKey = c.getString(0);
-//		c.close();
-		String lookupKey  = contactLookupUri.getPathSegments().get(2);
-		TimeLineUser newUser = new TimeLineUserImpl(rawContactId, lookupKey, contactLookupUri);
-		mRawContactIdCache.put(rawContactId, newUser);
-		return newUser;
-	}
-
 	private PendingIntent getAlarmIntent(){
 		Intent alarmIntent = new Intent(mContext, AlarmReceiver.class);
 		PendingIntent operation = PendingIntent.getBroadcast(mContext, 0, alarmIntent, PendingIntent.FLAG_UPDATE_CURRENT);		
