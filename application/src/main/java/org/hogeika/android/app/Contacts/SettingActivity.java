@@ -54,24 +54,24 @@ public class SettingActivity extends PreferenceActivity implements OnPreferenceC
 		intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
 		p.setIntent(intent);
 		
-		p = findPreference("reload");
-		p.setOnPreferenceClickListener(new OnPreferenceClickListener() {
-			@Override
-			public boolean onPreferenceClick(Preference preference) {
-				final ProgressDialog progressDialog = new ProgressDialog(SettingActivity.this);
-				progressDialog.setCancelable(false);
-				progressDialog.setMessage("Loading..");
-				progressDialog.show();
-				mTimeLineManager.reload(new ReloadListener() {
-					@Override
-					public void onComplete() {
-						progressDialog.dismiss();
-						finish();
-					}
-				});
-				return true;
-			}
-		});
+//		p = findPreference("reload");
+//		p.setOnPreferenceClickListener(new OnPreferenceClickListener() {
+//			@Override
+//			public boolean onPreferenceClick(Preference preference) {
+//				final ProgressDialog progressDialog = new ProgressDialog(SettingActivity.this);
+//				progressDialog.setCancelable(false);
+//				progressDialog.setMessage("Loading..");
+//				progressDialog.show();
+//				mTimeLineManager.reload(new ReloadListener() {
+//					@Override
+//					public void onComplete() {
+//						progressDialog.dismiss();
+//						finish();
+//					}
+//				});
+//				return true;
+//			}
+//		});
 		
 		p = findPreference("clear");
 		if(isSyncing){
