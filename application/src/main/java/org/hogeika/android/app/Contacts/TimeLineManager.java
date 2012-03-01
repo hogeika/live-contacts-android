@@ -118,6 +118,7 @@ public class TimeLineManager {
 						addItem(db, item);
 					}while(c.moveToNext());
 				}
+				c.close();
 				db.execSQL("DROP VIEW tmp_timeline;");
 				db.execSQL("DROP TABLE timeline;");
 				db.execSQL("DROP TABLE message;");
