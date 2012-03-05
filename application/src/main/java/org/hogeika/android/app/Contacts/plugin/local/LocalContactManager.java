@@ -89,7 +89,7 @@ public class LocalContactManager implements Manager {
 				final Map<String, Long> userMap = new HashMap<String, Long>();
 				final Map<String, String> typeMap = new HashMap<String, String>();
 				readUserMap(userMap, null);
-				syncSMS(TimeLineItem.DIRECTION_INCOMING, userMap, typeMap);
+				syncSMS(TimeLineItem.DIRECTION_INCOMING, userMap, typeMap, 0);
 			}
 		};
 		context.registerReceiver(mReceiver, new IntentFilter("android.provider.Telephony.SMS_RECEIVED"));
@@ -125,20 +125,21 @@ public class LocalContactManager implements Manager {
 	public void logout(Activity activity, Account account) {
 	}
 
-	private long mLastCheckTime = 0;
-	
 	@Override
 	public void sync(int type) {
 		SharedPreferences pref = mContext.getSharedPreferences(PREF, Activity.MODE_PRIVATE);
-		mLastCheckTime = pref.getLong(PREF_LOCAL_LAST_CHECK_TIME, 0);
+		long lastCheckTime = 0;
+		if(type == SYNC_TYPE_LIGHT ){
+			lastCheckTime = pref.getLong(PREF_LOCAL_LAST_CHECK_TIME, 0);
+		}
 		long now = System.currentTimeMillis() - 60 * 1000;
 		
 		final Map<String, Long> userMap = new HashMap<String, Long>();
 		final Map<String, String> typeMap = new HashMap<String, String>();
 		readUserMap(userMap, typeMap);
-		syncCallLog(userMap, typeMap);
-		syncSMS(TimeLineItem.DIRECTION_INCOMING, userMap, typeMap);
-		syncSMS(TimeLineItem.DIRECTION_OUTGOING, userMap, typeMap);
+		syncCallLog(userMap, typeMap, lastCheckTime);
+		syncSMS(TimeLineItem.DIRECTION_INCOMING, userMap, typeMap, lastCheckTime);
+		syncSMS(TimeLineItem.DIRECTION_OUTGOING, userMap, typeMap, lastCheckTime);
 		
 		Editor editor = pref.edit();
 		editor.putLong(PREF_LOCAL_LAST_CHECK_TIME, now);
@@ -170,17 +171,17 @@ public class LocalContactManager implements Manager {
 		final Map<String, Long> userMap = new HashMap<String, Long>();
 		final Map<String, String> typeMap = new HashMap<String, String>();
 		readUserMap(userMap, typeMap);
-		syncCallLog(userMap, typeMap);
+		syncCallLog(userMap, typeMap, 0);
 	}
 	
-	private void syncCallLog(Map<String, Long> userMap, Map<String, String> typeMap) {
+	private void syncCallLog(Map<String, Long> userMap, Map<String, String> typeMap, long lastCheckTime) {
 		String[] projection = new String[]{
 				Calls.TYPE,
 				Calls.DATE,
 				Calls.DURATION,
 				Calls.NUMBER,
 		};
-		Cursor cursor = mContentResolver.query(Calls.CONTENT_URI, projection, Calls.DATE + "> ?",  new String[]{Long.toString(mLastCheckTime)}, null);
+		Cursor cursor = mContentResolver.query(Calls.CONTENT_URI, projection, Calls.DATE + "> ?",  new String[]{Long.toString(lastCheckTime)}, null);
 		int typeIndex = cursor.getColumnIndex(Calls.TYPE);
 		int dateIndex = cursor.getColumnIndex(Calls.DATE);
 		int durationIndex = cursor.getColumnIndex(Calls.DURATION);
@@ -224,10 +225,10 @@ public class LocalContactManager implements Manager {
 		final Map<String, Long> userMap = new HashMap<String, Long>();
 		final Map<String, String> typeMap = new HashMap<String, String>();
 		readUserMap(userMap, typeMap);
-		syncSMS(TimeLineItem.DIRECTION_INCOMING, userMap, typeMap);
+		syncSMS(TimeLineItem.DIRECTION_INCOMING, userMap, typeMap, 0);
 	}
 
-	private void syncSMS(int direction, Map<String, Long> userMap, Map<String, String> typeMap) {
+	private void syncSMS(int direction, Map<String, Long> userMap, Map<String, String> typeMap, long lastCheckTime) {
 		String box = (direction == TimeLineItem.DIRECTION_INCOMING) ? "inbox" : "sent";
 		Uri uri = Uri.parse("content://sms/" + box);
 		String[] projection = new String[]{
@@ -235,7 +236,8 @@ public class LocalContactManager implements Manager {
 			"body",
 			"address",
 		};
-		Cursor cursor = mContentResolver.query(uri, projection, "date > ?",  new String[]{Long.toString(mLastCheckTime)}, null);
+		Cursor cursor = mContentResolver.query(uri, projection, "date > ?",  new String[]{Long.toString(lastCheckTime)}, null);
+//		Cursor cursor = mContentResolver.query(uri, projection, null, null, null);
 		while(cursor.moveToNext()){
 			long date = cursor.getLong(0);
 			String body = cursor.getString(1);
@@ -245,9 +247,11 @@ public class LocalContactManager implements Manager {
 				String originalId;
 				if(direction == TimeLineItem.DIRECTION_INCOMING){
 					originalId = getOriginalId("sms", date, number, mLocalNumber);
+//					Log.d("SMS inbox","tel:" + number + " date:" + date);
 				}else{
 					// OUTGOING
 					originalId = getOriginalId("sms", date, mLocalNumber, number);
+//					Log.d("SMS sent","tel:" + number + " date:" + date);
 				}
 				mTimeLineManager.addTimeLineItem(this, date, userMap.get(number), mLocalNumber, "sms-" + box, originalId, direction, typeMap.get(number), body);
 			}
@@ -295,7 +299,7 @@ public class LocalContactManager implements Manager {
 	}
 	@Override
 	public int getActiveAccountCount() {
-		return 0;
+		return 1;
 	}
 	@Override
 	public void clear() {
