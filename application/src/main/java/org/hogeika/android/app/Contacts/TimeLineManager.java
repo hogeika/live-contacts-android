@@ -1276,10 +1276,12 @@ public class TimeLineManager {
 		return mIsSyncing;
 	}
 	
+	@Deprecated
 	public static interface ReloadListener {
 		public void onComplete();
 	}
 	
+	@Deprecated
 	public synchronized void reload(final ReloadListener listener) {
 		new Thread(new Runnable() {
 			@Override
@@ -1292,10 +1294,12 @@ public class TimeLineManager {
 		}).start();
 	}
 	
+	@Deprecated
 	public static interface PurgeListenr {
 		public void onComplete();
 	}
 	
+	@Deprecated
 	public synchronized void purge(final PurgeListenr listener){
 		new Thread(new Runnable() {
 			public void run() {

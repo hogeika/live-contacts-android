@@ -1,9 +1,6 @@
 package org.hogeika.android.app.Contacts;
 
 import org.hogeika.android.app.Contacts.TimeLineManager.ClearListener;
-import org.hogeika.android.app.Contacts.TimeLineManager.PurgeListenr;
-import org.hogeika.android.app.Contacts.TimeLineManager.ReloadListener;
-
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
