@@ -95,6 +95,8 @@ public class MainActivity extends TabActivity {
 								return;
 							}
 			            }
+			            
+			            syncTimeLine(Manager.SYNC_TYPE_LIGHT);
 					}
 				});
 			}
@@ -117,7 +119,6 @@ public class MainActivity extends TabActivity {
 	        		removeDialog(DIALOG_PROGRESS);
 				}catch(IllegalArgumentException e){
 				}
-				syncTimeLine(Manager.SYNC_TYPE_LIGHT);
 			}
 		});
 	}
