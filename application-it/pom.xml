@@ -6,7 +6,7 @@
   <parent>
     <groupId>org.hogeika.android.app</groupId>
     <artifactId>Contacts-parent</artifactId>
-    <version>0.1.0</version>
+    <version>0.1.1</version>
   </parent>
 
   <artifactId>Contacts-it</artifactId>
@@ -34,14 +34,14 @@
       <groupId>org.hogeika.android.app</groupId>
       <artifactId>Contacts</artifactId>
       <type>apk</type>
-      <version>0.1.0</version>
+      <version>0.1.1</version>
       <classifier>${zipaligned-classifier}</classifier> <!--  classifier set according to the ran profile -->
     </dependency>
     <dependency>
       <groupId>org.hogeika.android.app</groupId>
       <artifactId>Contacts</artifactId>
       <type>jar</type>
-      <version>0.1.0</version>
+      <version>0.1.1</version>
     </dependency>
   </dependencies>
 
