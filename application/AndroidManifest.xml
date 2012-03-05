@@ -5,7 +5,6 @@
 <uses-permission android:name="android.permission.INTERNET"></uses-permission>
 <uses-permission android:name="android.permission.GET_ACCOUNTS"></uses-permission>
 <uses-permission android:name="android.permission.READ_PHONE_STATE"></uses-permission>
-<uses-permission android:name="android.permission.RECEIVE_SMS"></uses-permission>
 <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"></uses-permission>
 <uses-sdk android:targetSdkVersion="8" android:minSdkVersion="8"></uses-sdk>
 <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"></uses-permission>
@@ -25,16 +24,6 @@
     <activity android:name=".ActivityStreamActivity"></activity>
     <activity android:name=".plugin.twitter.TwitterLoginActivity" android:theme="@android:style/Theme.Dialog"></activity><activity android:name="AccountSettingActivity"></activity>
     <activity android:name="ContactSessionActivity"></activity>
-    <receiver android:name=".plugin.local.PhoneStateReceiver">
-        <intent-filter>
-            <action android:name="android.intent.action.PHONE_STATE"></action>
-        </intent-filter>
-    </receiver>
-    <receiver android:name=".plugin.local.SMSReceiver">
-        <intent-filter>
-            <action android:name="android.provider.Telephony.SMS_RECEIVED"></action>
-        </intent-filter>
-    </receiver>
     <receiver android:name=".BootCompletedReceiver">
         <intent-filter>
             <action android:name="android.intent.action.BOOT_COMPLETED"></action>

@@ -3,8 +3,8 @@ package org.hogeika.android.app.Contacts.plugin.local;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.hogeika.android.app.Contacts.R;
 import org.hogeika.android.app.Contacts.Manager;
+import org.hogeika.android.app.Contacts.R;
 import org.hogeika.android.app.Contacts.TimeLineManager;
 import org.hogeika.android.app.Contacts.TimeLineManager.TimeLineItem;
 
@@ -12,19 +12,19 @@ import android.accounts.Account;
 import android.accounts.AccountManager;
 import android.accounts.AuthenticatorDescription;
 import android.app.Activity;
-import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
+import android.database.ContentObserver;
 import android.database.Cursor;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
+import android.os.Handler;
 import android.provider.CallLog.Calls;
 import android.provider.ContactsContract.CommonDataKinds.Phone;
 import android.provider.ContactsContract.RawContactsEntity;
@@ -34,24 +34,30 @@ import android.text.format.DateUtils;
 import android.util.Log;
 
 public class LocalContactManager implements Manager {
+	private static final Uri SMS_URI = Uri.parse("content://sms/");
+
 	public static final String MANAGER_NAME = "localhost";
 
 	public static final String PREF = "local_seting";
-	public static final String PREF_LOCAL_LAST_CHECK_TIME = "last_check_time";
+	public static final String PREF_LOCAL_CALLLOG_LAST_CHECK_TIME = "calllog_last_check_time";
+	public static final String PREF_LOCAL_SMS_LAST_CHECK_TIME = "sms_last_check_time";
 	
 	private final Context mContext;
 	private final ContentResolver mContentResolver;
+	private final Handler mHandler;
 	private final String mLocalNumber;
 	private final Resources mResources;
 	private final Drawable mIcon;
 	private final Drawable mPhoneIcon;
 	private final Drawable mSMSIcon;
 	private final TimeLineManager mTimeLineManager;
-	private final BroadcastReceiver mReceiver;
+//	private final BroadcastReceiver mReceiver;
 	
 	public LocalContactManager(Context context, TimeLineManager timelineManager){
 		mContext = context;
 		mContentResolver = context.getContentResolver();
+		mHandler = new Handler(mContext.getMainLooper());
+
 		TelephonyManager tm = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
 		String localNumber = tm.getLine1Number();
 		if(localNumber != null){
@@ -83,16 +89,22 @@ public class LocalContactManager implements Manager {
 		mPhoneIcon = resources.getDrawable(R.drawable.icon_phone);
 		mSMSIcon = resources.getDrawable(R.drawable.icon_sms);
 		
-		mReceiver = new BroadcastReceiver() {
+		mContentResolver.registerContentObserver(Calls.CONTENT_URI, true, new ContentObserver(mHandler) {
 			@Override
-			public void onReceive(Context context, Intent intent) {
-				final Map<String, Long> userMap = new HashMap<String, Long>();
-				final Map<String, String> typeMap = new HashMap<String, String>();
-				readUserMap(userMap, null);
-				syncSMS(TimeLineItem.DIRECTION_INCOMING, userMap, typeMap, 0);
+			public void onChange(boolean selfChange) {
+				super.onChange(selfChange);
+				syncCallLog(SYNC_TYPE_LIGHT);
+				mTimeLineManager.notifyOnUpdate();
 			}
-		};
-		context.registerReceiver(mReceiver, new IntentFilter("android.provider.Telephony.SMS_RECEIVED"));
+		});
+		mContentResolver.registerContentObserver(SMS_URI, true, new ContentObserver(mHandler) {
+			@Override
+			public void onChange(boolean selfChange) {
+				super.onChange(selfChange);
+				syncSMS(SYNC_TYPE_LIGHT);
+				mTimeLineManager.notifyOnUpdate();
+			}
+		});
 		timelineManager.addManager(this);
 	}
 	@Override
@@ -127,23 +139,11 @@ public class LocalContactManager implements Manager {
 
 	@Override
 	public void sync(int type) {
-		SharedPreferences pref = mContext.getSharedPreferences(PREF, Activity.MODE_PRIVATE);
-		long lastCheckTime = 0;
-		if(type == SYNC_TYPE_LIGHT ){
-			lastCheckTime = pref.getLong(PREF_LOCAL_LAST_CHECK_TIME, 0);
-		}
-		long now = System.currentTimeMillis() - 60 * 1000;
-		
 		final Map<String, Long> userMap = new HashMap<String, Long>();
 		final Map<String, String> typeMap = new HashMap<String, String>();
 		readUserMap(userMap, typeMap);
-		syncCallLog(userMap, typeMap, lastCheckTime);
-		syncSMS(TimeLineItem.DIRECTION_INCOMING, userMap, typeMap, lastCheckTime);
-		syncSMS(TimeLineItem.DIRECTION_OUTGOING, userMap, typeMap, lastCheckTime);
-		
-		Editor editor = pref.edit();
-		editor.putLong(PREF_LOCAL_LAST_CHECK_TIME, now);
-		editor.commit();
+		syncCallLog(type, userMap, typeMap);
+		syncSMS(type, userMap, typeMap);
 	}
 	
 	private void readUserMap(final Map<String, Long> userMap, final Map<String, String> typeMap) {
@@ -167,11 +167,26 @@ public class LocalContactManager implements Manager {
 		return prefix + "/" + Long.toString(timestamp) + "/" + from + "/" + to;
 	}
 	
-	public void syncCallLog(){
+	private void syncCallLog(int type){
 		final Map<String, Long> userMap = new HashMap<String, Long>();
 		final Map<String, String> typeMap = new HashMap<String, String>();
 		readUserMap(userMap, typeMap);
-		syncCallLog(userMap, typeMap, 0);
+		syncCallLog(type, userMap, typeMap);
+	}
+	
+	private void syncCallLog(int type, Map<String, Long> userMap, Map<String, String> typeMap){
+		SharedPreferences pref = mContext.getSharedPreferences(PREF, Activity.MODE_PRIVATE);
+		long lastCheckTime = 0;
+		if(type == SYNC_TYPE_LIGHT ){
+			lastCheckTime = pref.getLong(PREF_LOCAL_CALLLOG_LAST_CHECK_TIME, 0);
+		}
+		long now = System.currentTimeMillis() - 60 * 1000;
+
+		syncCallLog(userMap, typeMap, lastCheckTime);
+		
+		Editor editor = pref.edit();
+		editor.putLong(PREF_LOCAL_CALLLOG_LAST_CHECK_TIME, now);
+		editor.commit();
 	}
 	
 	private void syncCallLog(Map<String, Long> userMap, Map<String, String> typeMap, long lastCheckTime) {
@@ -221,16 +236,32 @@ public class LocalContactManager implements Manager {
 		}
 	}
 	
-	public void syncIncomingSMS(){
+	private void syncSMS(int type){
 		final Map<String, Long> userMap = new HashMap<String, Long>();
 		final Map<String, String> typeMap = new HashMap<String, String>();
 		readUserMap(userMap, typeMap);
-		syncSMS(TimeLineItem.DIRECTION_INCOMING, userMap, typeMap, 0);
+		syncSMS(type,  userMap, typeMap);
 	}
 
+	private void syncSMS(int type, Map<String, Long> userMap, Map<String, String> typeMap){
+		SharedPreferences pref = mContext.getSharedPreferences(PREF, Activity.MODE_PRIVATE);
+		long lastCheckTime = 0;
+		if(type == SYNC_TYPE_LIGHT ){
+			lastCheckTime = pref.getLong(PREF_LOCAL_SMS_LAST_CHECK_TIME, 0);
+		}
+		long now = System.currentTimeMillis() - 60 * 1000;
+		
+		syncSMS(TimeLineItem.DIRECTION_INCOMING, userMap, typeMap, lastCheckTime);
+		syncSMS(TimeLineItem.DIRECTION_OUTGOING, userMap, typeMap, lastCheckTime);
+		
+		Editor editor = pref.edit();
+		editor.putLong(PREF_LOCAL_SMS_LAST_CHECK_TIME, now);
+		editor.commit();
+	}
+	
 	private void syncSMS(int direction, Map<String, Long> userMap, Map<String, String> typeMap, long lastCheckTime) {
 		String box = (direction == TimeLineItem.DIRECTION_INCOMING) ? "inbox" : "sent";
-		Uri uri = Uri.parse("content://sms/" + box);
+		Uri uri = Uri.parse(SMS_URI + box);
 		String[] projection = new String[]{
 			"date",
 			"body",
@@ -305,7 +336,7 @@ public class LocalContactManager implements Manager {
 	public void clear() {
 		SharedPreferences pref = mContext.getSharedPreferences(PREF, Activity.MODE_PRIVATE);
 		Editor editor = pref.edit();
-		editor.putLong(PREF_LOCAL_LAST_CHECK_TIME, 0);
+		editor.putLong(PREF_LOCAL_CALLLOG_LAST_CHECK_TIME, 0);
 		editor.commit();
 	}
 }
