@@ -50,6 +50,8 @@ import com.sun.mail.imap.IMAPMessage;
 import com.sun.mail.imap.IMAPSSLStore;
 
 public class GMailManager implements Manager {
+	private static final boolean DEBUG_OUTPUT = true;
+
 	private static final String ELIMINATION_REGEXP = "(?m)^.+$(\r?\n^(>|＞).*$)+\r?\n?\\Z";
 
 	private static final int MAX_MESSAGES = 200;
@@ -283,7 +285,7 @@ public class GMailManager implements Manager {
 			        name,
 			        info.getToken(),
 			        info.getTokenSecret(),
-			        true);
+			        DEBUG_OUTPUT);
 			
 			IMAPFolder folder = (IMAPFolder) store.getFolder("[Gmail]/All Mail");
 			if(folder.exists()){
